@@ -2,9 +2,9 @@ require('dotenv').config();
 
 const express=require('express');
 const http=require('http');
-require('./config/redis');
+const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
-const {getNearbyDrivers}=require('./location/locationService');
+const {getNearbyDrivers,getDriverState}=require('./location/locationService');
 const app=express();
 
 app.get('/',(req,res)=>{
@@ -24,6 +24,33 @@ app.get('/api/nearby',async (req,res)=>{
  });
 
 });
+
+app.get('/api/driver/:id',async (req,res)=>{
+
+    const driver=await getDriverState(req.params.id);
+    if(!driver){
+        return res.status(404).json({error:"Driver not found"});
+    }
+    res.json(driver);
+}
+    
+);
+app.get('/debug/keys', async (req,res)=>{
+
+    const keys = await redis.keys('*');
+ 
+    res.json(keys);
+ 
+ });
+ app.get('/debug/flush', async (req,res)=>{
+
+    await redis.flushall();
+ 
+    res.json({
+       success:true
+    });
+ 
+ });
 const server=http.createServer(app);
 createWebSocketServer(server);
 const PORT=process.env.PORT||8080;

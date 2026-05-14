@@ -35,7 +35,9 @@ function createWebSocketServer(httpServer) {
             await updateDriverLocation(
               msg.driverId,
               msg.lat,
-              msg.lng
+              msg.lng,
+              msg.heading,
+              msg.speed
             );
           
             console.log(

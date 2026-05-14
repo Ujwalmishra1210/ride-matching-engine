@@ -83,7 +83,9 @@ async function runSimulator(numDrivers=5){
              
          setInterval(()=>{
               const moved=movePosition(driver.lat,driver.lng,driver.heading,driver.speed);
-
+              driver.lat = moved.lat;
+              driver.lng = moved.lng;
+              driver.heading = moved.heading;
               
              ws.send(JSON.stringify(
                {
