@@ -4,9 +4,9 @@ const express=require('express');
 const http=require('http');
 const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
-const {getNearbyDrivers,getDriverState}=require('./location/locationService');
+const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
 const app=express();
-
+app.use(express.json());
 app.get('/',(req,res)=>{
     res.send("Ride Engine Running");
 });
@@ -51,6 +51,15 @@ app.get('/debug/keys', async (req,res)=>{
     });
  
  });
+app.post('/api/driver/:id/state',async (req,res)=>{
+     const {state}=req.body;
+     await updateDriverState(req.params.id,state);
+     res.json({
+        success:true,
+        driverId:req.params.id,
+        newState:state
+     });
+});
 const server=http.createServer(app);
 createWebSocketServer(server);
 const PORT=process.env.PORT||8080;
@@ -58,4 +67,6 @@ const PORT=process.env.PORT||8080;
 server.listen(PORT,()=>{
     console.log(`Server running on ${PORT}`);
 });
+
+
 

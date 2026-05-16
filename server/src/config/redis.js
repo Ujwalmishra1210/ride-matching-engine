@@ -9,7 +9,7 @@ redis.on('connect',()=>{
 
 redis.on('error',(err)=>{
 
-console.log('Redis Error:',err);
+console.error('Redis Error:',err);
 
 });
 

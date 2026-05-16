@@ -1,6 +1,6 @@
 const WebSocket=require('ws');
 const crypto = require('crypto');
-const { type } = require('os');
+
 
 const MUMBAI_BOUNDS={
    lat:{
@@ -37,7 +37,14 @@ function movePosition(lat,lng,heading,speedKmh){
        const headingrad=heading*(Math.PI/180);
        const R=6371;
        let newlat=lat+(distKm/R)*(180/Math.PI)*(Math.cos(headingrad));
-       let newlng=lng+(distKm/R)*(180/Math.PI)*(Math.sin(headingrad));
+       let newlng =
+   lng +
+   (
+      (distKm / R) *
+      (180 / Math.PI) *
+      Math.sin(headingrad)
+   ) /
+   Math.cos(lat * Math.PI / 180);
        let bounced=false;
       //  clamping
        if(newlat<MUMBAI_BOUNDS.lat.min){
@@ -72,6 +79,7 @@ async function runSimulator(numDrivers=5){
      console.log(`Started simulation with ${numDrivers} drivers`);
 
      for(let i=0;i<numDrivers;i++){
+      await new Promise(res=>setTimeout(res,50));
         const ws=new WebSocket('ws://localhost:8080');
         
         ws.on('open',()=>{
@@ -102,6 +110,20 @@ async function runSimulator(numDrivers=5){
          },2000);
 
         });
+        ws.on('error',(err)=>{
+
+         console.error(
+            `Driver socket error: ${err.message}`
+         );
+      
+      });
+      ws.on('close',()=>{
+
+         console.log(
+            `Disconnected: ${driver.driverId}`
+         );
+      
+      });
 
 
      }

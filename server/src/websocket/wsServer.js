@@ -9,7 +9,7 @@ function createWebSocketServer(httpServer) {
   });
 
   wss.on('connection', (ws) => {
-
+     let driverId=null;
     console.log('New socket connection');
 
     ws.on('message', async (rawMessage) => {
@@ -19,7 +19,7 @@ function createWebSocketServer(httpServer) {
         const msg = JSON.parse(rawMessage);
 
         if (msg.type === 'REGISTER') {
-
+          driverId=msg.driverId;
           connectedDrivers.set(msg.driverId, ws);
 
           console.log(
@@ -52,12 +52,30 @@ function createWebSocketServer(httpServer) {
 
       }
 
-    });
+    }
+    
+    );
+  ws.on('close', () => {
 
+    if(driverId){
+ 
+       connectedDrivers.delete(driverId);
+ 
+       console.log(
+          `Driver disconnected: ${driverId}`
+       );
+ 
+       console.log(
+          `Remaining drivers: ${connectedDrivers.size}`
+       );
+ 
+    }
+ 
+ });
   });
 
 }
 
 module.exports = {
-  createWebSocketServer
+  createWebSocketServer,connectedDrivers
 };
