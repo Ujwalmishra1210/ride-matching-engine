@@ -28,7 +28,7 @@ async function createRideRequest({
 
 }
 async function getRide(rideId){
-     return redis.hgetall(`rideId:${rideId}`);
+     return redis.hgetall(`ride:${rideId}`);
 }
 
 async function updateRide(rideId,updates){

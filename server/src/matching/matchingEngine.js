@@ -36,7 +36,7 @@
             if(driverData.status!==DRIVER_STATES.AVAILABLE){
                 continue;
             }
-            candidates.push_back({
+            candidates.push({
                 driverId,
                 distanceKm:parseFloat(distStr)
             });
@@ -71,7 +71,7 @@
     }
 
     async function dispatchRide(ride){
-            const candidates=findCandidateDrivers(ride.pickupLat,ride.pickupLng);
+            const candidates=await findCandidateDrivers(ride.pickupLat,ride.pickupLng);
             if(candidates.length==0){
                  
                 await updateRide(ride.rideId,{

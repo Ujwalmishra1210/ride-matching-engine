@@ -5,6 +5,8 @@ const http=require('http');
 const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
 const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
+const {dispatchRide}=require('./matching/matchingEngine');
+const {createRideRequest,getRide}=require('./rides/rideService');
 const app=express();
 app.use(express.json());
 app.get('/',(req,res)=>{
@@ -59,6 +61,45 @@ app.post('/api/driver/:id/state',async (req,res)=>{
         driverId:req.params.id,
         newState:state
      });
+});
+app.post('api/rides/request',async (req,res)=>{
+  try {
+       const {
+        riderId,
+        pickupLat,
+        pickupLng,
+        dropLat,
+        dropLng,
+       }=req.body;
+
+       const ride=await createRideRequest(
+        {
+            riderId,
+            pickupLat,
+            pickupLng,
+            dropLat,
+            dropLng,
+        }
+       );
+
+       const result=await dispatchRide(ride);
+
+       const updatedRide=await getRide(ride.rideId);
+
+       res.json({
+        dispatchResult:result,
+        ride:updatedRide
+       });
+
+
+  } catch (error) {
+     res.status(500).json(
+        {
+            error:"Internal error"
+        }
+     );
+  }
+
 });
 const server=http.createServer(app);
 createWebSocketServer(server);

@@ -81,9 +81,9 @@ async function runSimulator(numDrivers=5){
      for(let i=0;i<numDrivers;i++){
       await new Promise(res=>setTimeout(res,50));
         const ws=new WebSocket('ws://localhost:8080');
-        
+        let driver = null; 
         ws.on('open',()=>{
-            const driver=createDriver();
+             driver=createDriver();
             ws.send(JSON.stringify({
                type:'REGISTER',
                driverId:driver.driverId
