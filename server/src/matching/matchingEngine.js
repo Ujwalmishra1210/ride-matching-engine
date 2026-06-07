@@ -9,7 +9,9 @@
 
     const DRIVERS_GEO_KEY = "drivers:locations";
     const DRIVER_STATE_PREFIX = "driver:";   
-
+    const {
+  reserveDriver
+} = require("./reservationService");
     async function findCandidateDrivers(lat,lng,radiusKm=5){
            
         const nearbyDrivers=await redis.georadius(
@@ -82,8 +84,18 @@
                     reason:"NO_DRIVERS"
                 };
             }
-             const selectedDriver=candidates[0];
-            return assignDrivertoRide(ride,selectedDriver.driverId);
+             for(const candidate of candidates){
+                const reserved=await reserveDriver(candidate.driverId,ride.rideId);
+
+                if(!reserved){
+                    continue;
+                }
+                return assignDrivertoRide(ride,candidate.driverId);
+             }
+             return {
+                 success:false,
+                 reason:"NO_AVAILABLE_DRIVER"
+             };
 
     }
 
