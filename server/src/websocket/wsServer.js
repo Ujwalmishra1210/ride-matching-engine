@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const { updateDriverLocation } =require('../location/locationService');
 const connectedDrivers = new Map();
-
+const {acceptOffer,rejectOffer}=require('../matching/offerService');
 function createWebSocketServer(httpServer) {
 
   const wss = new WebSocket.Server({
@@ -45,6 +45,12 @@ function createWebSocketServer(httpServer) {
             );
           
           }
+          if(msg.type=='ACCEPT_RIDE'){
+             acceptOffer(msg.driverId);
+          }
+          if(msg.type=='REJECT_RIDE'){
+             rejectOffer(msg.driverId);
+          }
 
       } catch (err) {
 
@@ -76,6 +82,25 @@ function createWebSocketServer(httpServer) {
 
 }
 
+function sendRideOffer(driverId,ride){
+
+     const ws=connectedDrivers.get(driverId);
+
+     if(!ws){
+      return false;
+     }
+     ws.send(
+      JSON.stringify({
+         type:"RIDE_OFFER",
+         ride
+      }
+      )
+     );
+     return true;
+
+
+}
+
 module.exports = {
-  createWebSocketServer,connectedDrivers
+  createWebSocketServer,connectedDrivers, sendRideOffer
 };

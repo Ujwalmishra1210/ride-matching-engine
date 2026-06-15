@@ -62,7 +62,7 @@ app.post('/api/driver/:id/state',async (req,res)=>{
         newState:state
      });
 });
-app.post('api/rides/request',async (req,res)=>{
+app.post('/api/rides/request',async (req,res)=>{
   try {
        const {
         riderId,
