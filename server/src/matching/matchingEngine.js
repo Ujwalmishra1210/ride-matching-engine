@@ -75,6 +75,34 @@ async function assignDrivertoRide(ride,driverId){
           };
 
 }
+
+async function completeRide(rideId){
+
+       const ride=await redis.hgetall(`ride:${rideId}`);
+       if(Object.keys(ride).length===0){
+
+            return {
+                success:false,
+                reason:"RIDE_NOT_FOUND"
+            };
+       }
+       await updateRide(rideId,{
+        status:"COMPLETED"
+       });
+       const driverId=ride.assignedDriverId;
+       await redis.hset(`driver:${driverId}`,{
+           status:DRIVER_STATES.AVAILABLE,
+           currentRideId:"",
+           lastUpdate:Date.now()
+       });
+       return
+       {
+        success:true,
+        rideId,
+        driverId
+       };
+}
+
 async function releaseDriver(driverId){
         await redis.hset(
              `${DRIVER_STATE_PREFIX}${driverId}`,
@@ -114,6 +142,10 @@ async function dispatchRide(ride){
                 continue;
             }
             
+
+
+
+            
             return assignDrivertoRide(ride,candidate.driverId);
          }
          return {
@@ -123,7 +155,10 @@ async function dispatchRide(ride){
 
 }
 
+
+
 module.exports = {
     dispatchRide,
-    findCandidateDrivers
+    findCandidateDrivers,
+    completeRide
   };

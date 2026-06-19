@@ -5,7 +5,7 @@ const http=require('http');
 const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
 const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
-const {dispatchRide}=require('./matching/matchingEngine');
+const {dispatchRide,completeRide}=require('./matching/matchingEngine');
 const {createRideRequest,getRide}=require('./rides/rideService');
 const app=express();
 app.use(express.json());
@@ -99,6 +99,26 @@ app.post('/api/rides/request',async (req,res)=>{
         }
      );
   }
+
+});
+
+app.post('/api/rides/:rideId/complete',async (req,res)=>{
+         try {
+             const result=await completeRide(req.params.rideId);
+
+  if(!result.success){
+         return res.status(404).json(result);
+  }
+
+  res.json(result);
+
+
+         } catch (err) {
+            return res.status(500).json({
+                error:"Internal error"
+            });
+         }
+
 
 });
 const server=http.createServer(app);
