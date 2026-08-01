@@ -2,7 +2,7 @@ const redis=require('../config/redis');
 
 const {DRIVER_STATES}=require('../drivers/driverState');
 
-const {updateDriverState}=require('../location/locationService');
+
 
 const {
     updateRide,
@@ -169,17 +169,38 @@ async function dispatchRide(ride){
                 await releaseDriver(candidate.driverId);
                 continue;
             }
-            const accepted=await waitForDriverResponse(candidate.driverId);
-            if(!accepted){
-                await releaseDriver(candidate.driverId);
-                continue;
-            }
+            const accepted = await waitForDriverResponse(candidate.driverId);
+
+if(!accepted){
+    await releaseDriver(candidate.driverId);
+    continue;
+}
+
+
+// Check latest ride state before assignment
+const latestRide = await getRide(ride.rideId);
+
+if(latestRide.status === "CANCELLED"){
+
+    await releaseDriver(candidate.driverId);
+
+    return {
+        success:false,
+        reason:"RIDE_CANCELLED"
+    };
+}
+
+
+return assignDrivertoRide(
+    ride,
+    candidate.driverId
+);
             
 
 
 
             
-            return assignDrivertoRide(ride,candidate.driverId);
+           
          }
          return {
              success:false,
