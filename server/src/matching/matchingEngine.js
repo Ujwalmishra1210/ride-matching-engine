@@ -99,8 +99,7 @@ async function completeRide(rideId){
            currentRideId:"",
            lastUpdate:Date.now()
        });
-       return
-       {
+       return{
         success:true,
         rideId,
         driverId
