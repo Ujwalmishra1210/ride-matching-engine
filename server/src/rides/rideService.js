@@ -1,5 +1,5 @@
 const redis=require('../config/redis');
-const {v4:uuidv4}=require("uuid");
+const crypto = require("crypto");
 
 async function createRideRequest({
     riderId,
@@ -9,7 +9,7 @@ async function createRideRequest({
     dropLng
 
 }){
-        const rideId=uuidv4();
+     const rideId = crypto.randomUUID();
         const ride={
            rideId,
            riderId,

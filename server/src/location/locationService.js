@@ -7,6 +7,8 @@ const {
   DRIVER_STATES
 } = require("../drivers/driverState");
 
+const HEARTBEAT_TIMEOUT_MS = 10000;
+
 async function updateDriverLocation(
   driverId,
   lat,
@@ -29,10 +31,8 @@ async function updateDriverLocation(
   await redis.hset(
     `${DRIVER_STATE_PREFIX}${driverId}`,
     {
-
       lat,
       lng,
-
       heading,
       speed,
 
@@ -55,20 +55,14 @@ async function getNearbyDrivers(
 ) {
 
   const results = await redis.georadius(
-
     DRIVERS_GEO_KEY,
-
     lng,
     lat,
-
     radiusKm,
     "km",
-
     "WITHCOORD",
     "WITHDIST",
-
     "ASC",
-
     "COUNT",
     20
   );
@@ -95,26 +89,13 @@ async function getNearbyDrivers(
     }
 
     drivers.push({
-
       driverId,
-
-      distanceKm:
-        parseFloat(distStr),
-
-      lat:
-        parseFloat(latStr),
-
-      lng:
-        parseFloat(lngStr),
-
-      heading:
-        driverState.heading,
-
-      speed:
-        driverState.speed,
-
-      status:
-        driverState.status
+      distanceKm: parseFloat(distStr),
+      lat: parseFloat(latStr),
+      lng: parseFloat(lngStr),
+      heading: driverState.heading,
+      speed: driverState.speed,
+      status: driverState.status
     });
   }
 
@@ -132,27 +113,13 @@ async function getDriverState(driverId) {
   }
 
   return {
-
-    lat:
-      parseFloat(data.lat),
-
-    lng:
-      parseFloat(data.lng),
-
-    heading:
-      parseFloat(data.heading),
-
-    speed:
-      parseFloat(data.speed),
-
-    status:
-      data.status,
-
-    currentRideId:
-      data.currentRideId || null,
-
-    lastUpdate:
-      Number(data.lastUpdate)
+    lat: parseFloat(data.lat),
+    lng: parseFloat(data.lng),
+    heading: parseFloat(data.heading),
+    speed: parseFloat(data.speed),
+    status: data.status,
+    currentRideId: data.currentRideId || null,
+    lastUpdate: Number(data.lastUpdate)
   };
 }
 
@@ -170,9 +137,44 @@ async function updateDriverState(
   );
 }
 
+async function markDriverOffline(driverId) {
+
+  await redis.hset(
+    `${DRIVER_STATE_PREFIX}${driverId}`,
+    {
+      status: DRIVER_STATES.OFFLINE,
+      currentRideId: "",
+      lastUpdate: Date.now()
+    }
+  );
+
+  await redis.zrem(
+    DRIVERS_GEO_KEY,
+    driverId
+  );
+}
+
+async function isDriverStale(driverId) {
+
+  const driver =
+    await getDriverState(driverId);
+
+  if (!driver) {
+    return false;
+  }
+
+  return (
+    Date.now() - driver.lastUpdate >
+    HEARTBEAT_TIMEOUT_MS
+  );
+}
+
 module.exports = {
   updateDriverLocation,
   getNearbyDrivers,
   getDriverState,
-  updateDriverState
+  updateDriverState,
+  markDriverOffline,
+  isDriverStale,
+  HEARTBEAT_TIMEOUT_MS
 };

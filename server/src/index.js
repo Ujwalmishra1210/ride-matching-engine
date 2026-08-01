@@ -7,6 +7,7 @@ const {createWebSocketServer}=require("./websocket/wsServer");
 const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
 const {dispatchRide,completeRide}=require('./matching/matchingEngine');
 const {createRideRequest,getRide}=require('./rides/rideService');
+const { startHeartbeatMonitor } = require("./heartbeat/heartbeatService");
 const app=express();
 app.use(express.json());
 app.get('/',(req,res)=>{
@@ -123,6 +124,7 @@ app.post('/api/rides/:rideId/complete',async (req,res)=>{
 });
 const server=http.createServer(app);
 createWebSocketServer(server);
+startHeartbeatMonitor();
 const PORT=process.env.PORT||8080;
 
 server.listen(PORT,()=>{
