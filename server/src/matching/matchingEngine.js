@@ -4,7 +4,11 @@ const {DRIVER_STATES}=require('../drivers/driverState');
 
 const {updateDriverState}=require('../location/locationService');
 
-const {updateRide}=require('../rides/rideService');
+const {
+    updateRide,
+    getRide,
+    cancelRide
+} = require("../rides/rideService");
 
 const DRIVERS_GEO_KEY = "drivers:locations";
 const DRIVER_STATE_PREFIX = "driver:";   
@@ -113,6 +117,35 @@ async function releaseDriver(driverId){
              }
         );
 }
+async function cancelRideRequest(rideId) {
+
+    const ride = await getRide(rideId);
+
+    if (Object.keys(ride).length === 0) {
+        return {
+            success: false,
+            reason: "RIDE_NOT_FOUND"
+        };
+    }
+
+    if (ride.status === "COMPLETED") {
+        return {
+            success: false,
+            reason: "RIDE_ALREADY_COMPLETED"
+        };
+    }
+
+    if (ride.assignedDriverId) {
+        await releaseDriver(ride.assignedDriverId);
+    }
+
+    await cancelRide(rideId);
+
+    return {
+        success: true,
+        rideId
+    };
+}
 async function dispatchRide(ride){
         const candidates=await findCandidateDrivers(ride.pickupLat,ride.pickupLng);
         if(candidates.length==0){
@@ -160,5 +193,6 @@ async function dispatchRide(ride){
 module.exports = {
     dispatchRide,
     findCandidateDrivers,
-    completeRide
-  };
+    completeRide,
+    cancelRideRequest
+};

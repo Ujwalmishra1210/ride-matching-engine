@@ -5,7 +5,11 @@ const http=require('http');
 const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
 const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
-const {dispatchRide,completeRide}=require('./matching/matchingEngine');
+const {
+    dispatchRide,
+    completeRide,
+    cancelRideRequest
+} = require("./matching/matchingEngine");
 const {createRideRequest,getRide}=require('./rides/rideService');
 const { startHeartbeatMonitor } = require("./heartbeat/heartbeatService");
 const app=express();
@@ -120,6 +124,40 @@ app.post('/api/rides/:rideId/complete',async (req,res)=>{
             });
          }
 
+
+});
+app.post("/api/rides/:rideId/cancel", async (req, res) => {
+
+    try {
+
+        const result = await cancelRideRequest(req.params.rideId);
+
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
+
+        res.json(result);
+
+    } catch (err) {
+
+        res.status(500).json({
+            error: "Internal error"
+        });
+
+    }
+
+});
+app.get('/api/rides/:rideId', async (req,res)=>{
+
+    const ride = await getRide(req.params.rideId);
+
+    if(Object.keys(ride).length === 0){
+        return res.status(404).json({
+            error:"Ride not found"
+        });
+    }
+
+    res.json(ride);
 
 });
 const server=http.createServer(app);
