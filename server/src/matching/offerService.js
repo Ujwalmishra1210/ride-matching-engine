@@ -1,48 +1,69 @@
-// using timers +map
-const pendingOffers=new Map();
+const {
+    incrementAcceptedTrips,
+    incrementRejectedTrips
+} = require("../drivers/driverStatsService");
 
-function waitForDriverResponse(driverId,timeoutMs=10000){
+// using timers + map
+const pendingOffers = new Map();
 
-        return new Promise((resolve) => {
-            
-            const timer=setTimeout(()=>
-                {
-                 pendingOffers.delete(driverId);
-                 resolve(false);
-                },timeoutMs);
+function waitForDriverResponse(driverId, timeoutMs = 10000) {
 
-           pendingOffers.set(driverId,
-            {
-                resolve,
-                timer
-            }
-           );
+    return new Promise((resolve) => {
 
+        const timer = setTimeout(() => {
+
+            pendingOffers.delete(driverId);
+            resolve(false);
+
+        }, timeoutMs);
+
+        pendingOffers.set(driverId, {
+            resolve,
+            timer
         });
+
+    });
+
 }
 
-function acceptOffer(driverId){
-            
-    const offer=pendingOffers.get(driverId);
-    if(!offer){
+async function acceptOffer(driverId) {
+
+    const offer = pendingOffers.get(driverId);
+
+    if (!offer) {
         return;
     }
+
+    await incrementAcceptedTrips(driverId);
+
     clearTimeout(offer.timer);
+
     offer.resolve(true);
+
     pendingOffers.delete(driverId);
 
 }
 
-function rejectOffer(driverId){
+async function rejectOffer(driverId) {
 
-    const offer=pendingOffers.get(driverId);
-    if(!offer){
+    const offer = pendingOffers.get(driverId);
+
+    if (!offer) {
         return;
     }
+
+    await incrementRejectedTrips(driverId);
+
     clearTimeout(offer.timer);
+
     offer.resolve(false);
+
     pendingOffers.delete(driverId);
 
 }
 
-module.exports={waitForDriverResponse,acceptOffer,rejectOffer};
+module.exports = {
+    waitForDriverResponse,
+    acceptOffer,
+    rejectOffer
+};

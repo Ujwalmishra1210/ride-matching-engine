@@ -2,7 +2,10 @@ const redis=require('../config/redis');
 
 const {DRIVER_STATES}=require('../drivers/driverState');
 
-
+const {
+    incrementCompletedTrips,
+    incrementCancelledTrips
+} = require("../drivers/driverStatsService");
 
 const {
     updateRide,
@@ -99,6 +102,7 @@ async function completeRide(rideId){
            currentRideId:"",
            lastUpdate:Date.now()
        });
+       await incrementCompletedTrips(driverId);
        return{
         success:true,
         rideId,
@@ -135,7 +139,13 @@ async function cancelRideRequest(rideId) {
     }
 
     if (ride.assignedDriverId) {
+
         await releaseDriver(ride.assignedDriverId);
+    
+        await incrementCancelledTrips(
+            ride.assignedDriverId
+        );
+    
     }
 
     await cancelRide(rideId);

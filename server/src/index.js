@@ -12,6 +12,9 @@ const {
 } = require("./matching/matchingEngine");
 const {createRideRequest,getRide}=require('./rides/rideService');
 const { startHeartbeatMonitor } = require("./heartbeat/heartbeatService");
+const {
+    getDriverStats
+} = require("./drivers/driverStatsService");
 const app=express();
 app.use(express.json());
 app.get('/',(req,res)=>{
@@ -42,6 +45,18 @@ app.get('/api/driver/:id',async (req,res)=>{
 }
     
 );
+app.get('/api/driver/:id/stats', async (req, res) => {
+
+    const stats = await getDriverStats(req.params.id);
+
+    res.json({
+        acceptedTrips: Number(stats.acceptedTrips || 0),
+        rejectedTrips: Number(stats.rejectedTrips || 0),
+        completedTrips: Number(stats.completedTrips || 0),
+        cancelledTrips: Number(stats.cancelledTrips || 0)
+    });
+
+});
 app.get('/debug/keys', async (req,res)=>{
 
     const keys = await redis.keys('*');
