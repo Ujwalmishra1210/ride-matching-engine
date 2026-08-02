@@ -2,7 +2,9 @@ const {
     incrementAcceptedTrips,
     incrementRejectedTrips
 } = require("../drivers/driverStatsService");
-
+const {
+    recordDriverResponseTime
+} = require("../metrics/dispatchMetricsService");
 // using timers + map
 const pendingOffers = new Map();
 
@@ -17,9 +19,12 @@ function waitForDriverResponse(driverId, timeoutMs = 10000) {
 
         }, timeoutMs);
 
+        const startTime = Date.now();
+
         pendingOffers.set(driverId, {
             resolve,
-            timer
+            timer,
+            startTime
         });
 
     });
@@ -37,7 +42,9 @@ async function acceptOffer(driverId) {
     await incrementAcceptedTrips(driverId);
 
     clearTimeout(offer.timer);
-
+    await recordDriverResponseTime(
+        Date.now() - offer.startTime
+    );
     offer.resolve(true);
 
     pendingOffers.delete(driverId);
@@ -55,7 +62,9 @@ async function rejectOffer(driverId) {
     await incrementRejectedTrips(driverId);
 
     clearTimeout(offer.timer);
-
+    await recordDriverResponseTime(
+        Date.now() - offer.startTime
+    );
     offer.resolve(false);
 
     pendingOffers.delete(driverId);

@@ -6,7 +6,14 @@ const {
     incrementCompletedTrips,
     incrementCancelledTrips
 } = require("../drivers/driverStatsService");
-
+const {
+    recordRideRequest,
+    recordSuccessfulMatch,
+    recordFailedMatch,
+    recordRideCompleted,
+    recordRideCancelled,
+    recordDispatchTime
+} = require("../metrics/dispatchMetricsService");
 const {
     updateRide,
     getRide,
@@ -85,7 +92,7 @@ async function assignDrivertoRide(ride,driverId){
 
 async function completeRide(rideId){
 
-       const ride=await redis.hgetall(`ride:${rideId}`);
+       const ride = await getRide(rideId);
        if(Object.keys(ride).length===0){
 
             return {
@@ -93,16 +100,19 @@ async function completeRide(rideId){
                 reason:"RIDE_NOT_FOUND"
             };
        }
+       if (ride.status !== "DRIVER_ASSIGNED") {
+        return {
+            success: false,
+            reason: "INVALID_RIDE_STATE"
+        };
+    }
        await updateRide(rideId,{
         status:"COMPLETED"
        });
        const driverId=ride.assignedDriverId;
-       await redis.hset(`driver:${driverId}`,{
-           status:DRIVER_STATES.AVAILABLE,
-           currentRideId:"",
-           lastUpdate:Date.now()
-       });
+       await releaseDriver(driverId);
        await incrementCompletedTrips(driverId);
+       await recordRideCompleted();
        return{
         success:true,
         rideId,
@@ -131,10 +141,13 @@ async function cancelRideRequest(rideId) {
         };
     }
 
-    if (ride.status === "COMPLETED") {
+    if (
+        ride.status !== "SEARCHING" &&
+        ride.status !== "DRIVER_ASSIGNED"
+    ) {
         return {
             success: false,
-            reason: "RIDE_ALREADY_COMPLETED"
+            reason: "INVALID_RIDE_STATE"
         };
     }
 
@@ -149,19 +162,27 @@ async function cancelRideRequest(rideId) {
     }
 
     await cancelRide(rideId);
-
+    await recordRideCancelled();
     return {
         success: true,
         rideId
     };
 }
 async function dispatchRide(ride){
+    await recordRideRequest();
+
+    const dispatchStartTime = Date.now();
         const candidates=await findCandidateDrivers(ride.pickupLat,ride.pickupLng);
         if(candidates.length==0){
              
             await updateRide(ride.rideId,{
                   status:"NO_DRIVERS_FOUND"
             });
+            await recordFailedMatch();
+
+            await recordDispatchTime(
+                Date.now() - dispatchStartTime
+            );
             return{
                 success:false,
                 reason:"NO_DRIVERS"
@@ -189,21 +210,35 @@ if(!accepted){
 // Check latest ride state before assignment
 const latestRide = await getRide(ride.rideId);
 
-if(latestRide.status === "CANCELLED"){
+if (latestRide.status !== "SEARCHING") {
 
     await releaseDriver(candidate.driverId);
 
+    await recordFailedMatch();
+
+    await recordDispatchTime(
+        Date.now() - dispatchStartTime
+    );
+
     return {
-        success:false,
-        reason:"RIDE_CANCELLED"
+        success: false,
+        reason: "RIDE_NOT_AVAILABLE"
     };
 }
 
 
-return assignDrivertoRide(
+const result = await assignDrivertoRide(
     ride,
     candidate.driverId
 );
+
+await recordSuccessfulMatch();
+
+await recordDispatchTime(
+    Date.now() - dispatchStartTime
+);
+
+return result;
             
 
 
@@ -211,6 +246,11 @@ return assignDrivertoRide(
             
            
          }
+        await recordFailedMatch();
+
+        await recordDispatchTime(
+            Date.now() - dispatchStartTime
+        );
          return {
              success:false,
              reason:"NO_AVAILABLE_DRIVER"
