@@ -78,9 +78,10 @@ async function assignDrivertoRide(ride,driverId){
             }
         );
      
-        await updateRide(ride.rideId,{
-            status:"DRIVER_ASSIGNED",
-            assignedDriverId:driverId
+        await updateRide(ride.rideId, {
+            status: "DRIVER_ASSIGNED",
+            assignedDriverId: driverId,
+            assignedAt: Date.now()
         });
 
         return {
@@ -264,5 +265,6 @@ module.exports = {
     dispatchRide,
     findCandidateDrivers,
     completeRide,
-    cancelRideRequest
+    cancelRideRequest,
+    releaseDriver
 };

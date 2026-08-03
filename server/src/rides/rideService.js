@@ -58,10 +58,19 @@ async function cancelRide(rideId) {
  
      return exists === 1;
  }
- module.exports = {
-     createRideRequest,
-     getRide,
-     updateRide,
-     cancelRide,
-     rideExists
- };
+
+ async function getAllRideIds() {
+
+    const keys = await redis.keys("ride:*");
+
+    return keys.map(key => key.replace("ride:", ""));
+
+}
+module.exports = {
+    createRideRequest,
+    getRide,
+    updateRide,
+    cancelRide,
+    rideExists,
+    getAllRideIds
+};

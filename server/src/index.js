@@ -15,6 +15,9 @@ const { startHeartbeatMonitor } = require("./heartbeat/heartbeatService");
 const {
     getDriverStats
 } = require("./drivers/driverStatsService");
+const {
+    startRideTimeoutMonitor
+} = require("./rides/rideTimeoutService");
 const app=express();
 app.use(express.json());
 app.get('/',(req,res)=>{
@@ -178,6 +181,7 @@ app.get('/api/rides/:rideId', async (req,res)=>{
 const server=http.createServer(app);
 createWebSocketServer(server);
 startHeartbeatMonitor();
+startRideTimeoutMonitor();
 const PORT=process.env.PORT||8080;
 
 server.listen(PORT,()=>{
