@@ -195,12 +195,19 @@ async function dispatchRide(ride){
             if(!reserved){
                 continue;
             }
-            const sent=sendRideOffer(candidate.driverId,ride);
+            console.log(`Offering ride ${ride.rideId} to ${candidate.driverId}`);
+            const sent = await sendRideOffer(
+                candidate.driverId,
+                ride
+            );
+            
             if(!sent){
                 await releaseDriver(candidate.driverId);
                 continue;
             }
+            
             const accepted = await waitForDriverResponse(candidate.driverId);
+            console.log(`${candidate.driverId} response: ${accepted}`);
 
 if(!accepted){
     await releaseDriver(candidate.driverId);

@@ -2,6 +2,9 @@ const WebSocket = require('ws');
 const { updateDriverLocation } =require('../location/locationService');
 const connectedDrivers = new Map();
 const {acceptOffer,rejectOffer}=require('../matching/offerService');
+const {
+  estimateDriverEta
+} = require("../eta/etaService");
 function createWebSocketServer(httpServer) {
 
   const wss = new WebSocket.Server({
@@ -82,19 +85,24 @@ function createWebSocketServer(httpServer) {
 
 }
 
-function sendRideOffer(driverId,ride){
+async function sendRideOffer(driverId,ride){
 
      const ws=connectedDrivers.get(driverId);
-
      if(!ws){
       return false;
      }
+     const eta = await estimateDriverEta(
+      driverId,
+      ride.pickupLat,
+      ride.pickupLng
+      );
+     
      ws.send(
       JSON.stringify({
-         type:"RIDE_OFFER",
-         ride
-      }
-      )
+          type: "RIDE_OFFER",
+          ride,
+          eta
+      })
      );
      return true;
 

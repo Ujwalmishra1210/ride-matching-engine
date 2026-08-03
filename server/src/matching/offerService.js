@@ -40,7 +40,7 @@ async function acceptOffer(driverId) {
     }
 
     await incrementAcceptedTrips(driverId);
-
+    console.log(`${driverId} ACCEPTED`);
     clearTimeout(offer.timer);
     await recordDriverResponseTime(
         Date.now() - offer.startTime
@@ -60,7 +60,7 @@ async function rejectOffer(driverId) {
     }
 
     await incrementRejectedTrips(driverId);
-
+    console.log(`${driverId} REJECTED`);
     clearTimeout(offer.timer);
     await recordDriverResponseTime(
         Date.now() - offer.startTime

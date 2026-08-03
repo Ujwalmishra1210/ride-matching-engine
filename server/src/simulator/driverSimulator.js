@@ -111,32 +111,42 @@ async function runSimulator(numDrivers=5){
 
         });
 
-        ws.on('message',(raw)=>{
-             const msg=JSON.parse(raw);
-             if(msg.type!=='RIDE_OFFER'){
-               return;
-             }
-             const delay=1000+Math.random()*3000;
-             setTimeout(()=>{
-               const randomNumber=Math.random();
+        ws.on("message", (raw) => {
 
-               if(randomNumber<0.8){
-                  ws.send(JSON.stringify(
-                     {
-                       type:'ACCEPT_RIDE',
-                     driverId:driver.driverId
-                     }
-                  ));
-               }else{
-                  ws.send(JSON.stringify({
-                     
-                        type:'REJECT_RIDE',
-                      driverId:driver.driverId
-                      
-                  }));
-               }
-             },delay);
-        });
+         const msg = JSON.parse(raw);
+     
+         if (msg.type !== "RIDE_OFFER") {
+             return;
+         }
+     
+         console.log(`${driver.driverId} received ride offer`);
+         console.log(JSON.stringify(msg, null, 2));
+     
+         const delay = 1000 + Math.random() * 3000;
+     
+         setTimeout(() => {
+     
+             const randomNumber = Math.random();
+     
+             if (randomNumber < 0.8) {
+     
+                 ws.send(JSON.stringify({
+                     type: "ACCEPT_RIDE",
+                     driverId: driver.driverId
+                 }));
+     
+             } else {
+     
+                 ws.send(JSON.stringify({
+                     type: "REJECT_RIDE",
+                     driverId: driver.driverId
+                 }));
+     
+             }
+     
+         }, delay);
+     
+     });
         ws.on('error',(err)=>{
 
          console.error(
