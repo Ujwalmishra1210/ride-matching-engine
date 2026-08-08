@@ -30,6 +30,9 @@ const {waitForDriverResponse}=require('./offerService');
 const {
     sendRideOffer
 } = require('../websocket/wsServer');
+const {
+    updateDriverState
+} = require("../location/locationService");
 async function findCandidateDrivers(lat,lng,radiusKm=5){
        
     const nearbyDrivers=await redis.georadius(
@@ -66,29 +69,30 @@ async function findCandidateDrivers(lat,lng,radiusKm=5){
 
 }
 
-async function assignDrivertoRide(ride,driverId){
+async function assignDrivertoRide(ride, driverId) {
 
-        await redis.hset(
-            `${DRIVER_STATE_PREFIX}${driverId}`,
-            {
-                status:DRIVER_STATES.ON_TRIP,
-                currentRideId:ride.rideId,
-                lastUpdate:Date.now()
+    await updateDriverState(
+        driverId,
+        DRIVER_STATES.ON_TRIP
+    );
 
-            }
-        );
-     
-        await updateRide(ride.rideId, {
-            status: "DRIVER_ASSIGNED",
-            assignedDriverId: driverId,
-            assignedAt: Date.now()
-        });
+    await redis.hset(
+        `${DRIVER_STATE_PREFIX}${driverId}`,
+        {
+            currentRideId: ride.rideId
+        }
+    );
 
-        return {
-            success: true,
-            driverId
-          };
+    await updateRide(ride.rideId, {
+        status: "DRIVER_ASSIGNED",
+        assignedDriverId: driverId,
+        assignedAt: Date.now()
+    });
 
+    return {
+        success: true,
+        driverId
+    };
 }
 
 async function completeRide(rideId){
@@ -121,15 +125,26 @@ async function completeRide(rideId){
        };
 }
 
-async function releaseDriver(driverId){
-        await redis.hset(
-             `${DRIVER_STATE_PREFIX}${driverId}`,
-             {
-                status:DRIVER_STATES.AVAILABLE,
-                currentRideId:"",
-                lastUpdate:Date.now()
-             }
-        );
+async function releaseDriver(driverId) {
+
+    const driver = await redis.hgetall(
+        `${DRIVER_STATE_PREFIX}${driverId}`
+    );
+
+    if (Object.keys(driver).length === 0) {
+        return false;
+    }
+
+    await redis.hset(
+        `${DRIVER_STATE_PREFIX}${driverId}`,
+        {
+            status: DRIVER_STATES.AVAILABLE,
+            currentRideId: "",
+            lastUpdate: Date.now()
+        }
+    );
+
+    return true;
 }
 async function cancelRideRequest(rideId) {
 

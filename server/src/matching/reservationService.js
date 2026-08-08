@@ -1,6 +1,8 @@
 const redis =require('../config/redis');
-
-const {DRIVER_STATES}=require('../drivers/driverState');
+const {
+  DRIVER_STATES,
+  canTransitionDriverState
+} = require("../drivers/driverState");
 
 const DRIVER_STATE_PREFIX='driver:';
 
@@ -14,10 +16,16 @@ async function reserveDriver(driverId,rideId) {
         
         const driver=await redis.hgetall(driverKey);
 
-        if( Object.keys(driver).length === 0 || driver.status!==DRIVER_STATES.AVAILABLE){
-            await redis.unwatch();
-            return false;
-        }
+        if (
+          Object.keys(driver).length === 0 ||
+          !canTransitionDriverState(
+              driver.status,
+              DRIVER_STATES.RESERVED
+          )
+      ) {
+          await redis.unwatch();
+          return false;
+      }
 
          const tx=redis.multi();
          tx.hset(driverKey,{

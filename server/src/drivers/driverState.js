@@ -1,9 +1,52 @@
-const DRIVER_STATES={
-  AVAILABLE:'AVAILABLE',
-  ON_TRIP:'ON_TRIP',
-  OFFLINE:'OFFLINE',
-  FINISHING:'FINISHING',
-  RESERVED:'RESERVED'
+const DRIVER_STATES = {
+  AVAILABLE: "AVAILABLE",
+  ON_TRIP: "ON_TRIP",
+  OFFLINE: "OFFLINE",
+  FINISHING: "FINISHING",
+  RESERVED: "RESERVED"
 };
 
-module.exports={DRIVER_STATES};
+const DRIVER_TRANSITIONS = {
+  [DRIVER_STATES.AVAILABLE]: [
+      DRIVER_STATES.RESERVED,
+      DRIVER_STATES.OFFLINE
+  ],
+
+  [DRIVER_STATES.RESERVED]: [
+      DRIVER_STATES.ON_TRIP,
+      DRIVER_STATES.AVAILABLE,
+      DRIVER_STATES.OFFLINE
+  ],
+
+  [DRIVER_STATES.ON_TRIP]: [
+      DRIVER_STATES.FINISHING,
+      DRIVER_STATES.AVAILABLE,
+      DRIVER_STATES.OFFLINE
+  ],
+
+  [DRIVER_STATES.FINISHING]: [
+      DRIVER_STATES.AVAILABLE,
+      DRIVER_STATES.OFFLINE
+  ],
+
+  [DRIVER_STATES.OFFLINE]: [
+      DRIVER_STATES.AVAILABLE
+  ]
+};
+
+function canTransitionDriverState(from, to) {
+  if (from === to) {
+      return true;
+  }
+
+  return (
+      DRIVER_TRANSITIONS[from] &&
+      DRIVER_TRANSITIONS[from].includes(to)
+  );
+}
+
+module.exports = {
+  DRIVER_STATES,
+  DRIVER_TRANSITIONS,
+  canTransitionDriverState
+};

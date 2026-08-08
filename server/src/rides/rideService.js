@@ -1,6 +1,8 @@
 const redis=require('../config/redis');
 const crypto = require("crypto");
-
+const {
+    canTransitionRideState
+} = require("./rideState");
 async function createRideRequest({
     riderId,
     pickupLat,
@@ -31,8 +33,32 @@ async function getRide(rideId){
      return redis.hgetall(`ride:${rideId}`);
 }
 
-async function updateRide(rideId,updates){
-     await redis.hset(`ride:${rideId}`,updates);
+async function updateRide(rideId, updates) {
+
+    const ride = await getRide(rideId);
+
+    if (Object.keys(ride).length === 0) {
+        throw new Error("RIDE_NOT_FOUND");
+    }
+
+    if (updates.status) {
+
+        const valid = canTransitionRideState(
+            ride.status,
+            updates.status
+        );
+
+        if (!valid) {
+            throw new Error(
+                `INVALID_RIDE_TRANSITION: ${ride.status} -> ${updates.status}`
+            );
+        }
+    }
+
+    await redis.hset(
+        `ride:${rideId}`,
+        updates
+    );
 }
 async function cancelRide(rideId) {
 

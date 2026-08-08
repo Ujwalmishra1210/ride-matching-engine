@@ -2,9 +2,9 @@ const redis = require("../config/redis");
 
 const DRIVERS_GEO_KEY = "drivers:locations";
 const DRIVER_STATE_PREFIX = "driver:";
-
 const {
-  DRIVER_STATES
+  DRIVER_STATES,
+  canTransitionDriverState
 } = require("../drivers/driverState");
 
 const HEARTBEAT_TIMEOUT_MS = 10000;
@@ -128,15 +128,32 @@ async function updateDriverState(
   newState
 ) {
 
+  const driverKey =
+      `${DRIVER_STATE_PREFIX}${driverId}`;
+
+  const driver = await getDriverState(driverId);
+
+  if (!driver) {
+      throw new Error("DRIVER_NOT_FOUND");
+  }
+
+  if (!canTransitionDriverState(
+      driver.status,
+      newState
+  )) {
+      throw new Error(
+          `INVALID_DRIVER_TRANSITION: ${driver.status} -> ${newState}`
+      );
+  }
+
   await redis.hset(
-    `${DRIVER_STATE_PREFIX}${driverId}`,
-    {
-      status: newState,
-      lastUpdate: Date.now()
-    }
+      driverKey,
+      {
+          status: newState,
+          lastUpdate: Date.now()
+      }
   );
 }
-
 async function markDriverOffline(driverId) {
 
   await redis.hset(
