@@ -34,7 +34,8 @@ const {
 const {
     updateDriverState
 } = require("../location/locationService");
-async function findCandidateDrivers(lat,lng,radiusKm=5){
+async function findCandidateDrivers(lat,lng,radiusKm = 5,
+    excludedDriverIds = []){
        
     const nearbyDrivers=await redis.georadius(
         DRIVERS_GEO_KEY,
@@ -48,9 +49,11 @@ async function findCandidateDrivers(lat,lng,radiusKm=5){
         20
     );
     const candidates=[];
-
+    const excluded = new Set(excludedDriverIds);
     for(const [driverId,distStr] of nearbyDrivers){
-
+        if (excluded.has(driverId)) {
+            continue;
+        }
         const driverData=await redis.hgetall(
             `${DRIVER_STATE_PREFIX}${driverId}`
         );
@@ -165,7 +168,18 @@ async function dispatchRide(ride){
     await recordRideRequest();
 
     const dispatchStartTime = Date.now();
-        const candidates=await findCandidateDrivers(ride.pickupLat,ride.pickupLng);
+
+    const attemptedDriverIds =
+        ride.attemptedDriverIds
+            ? JSON.parse(ride.attemptedDriverIds)
+            : [];
+
+    const candidates = await findCandidateDrivers(
+        ride.pickupLat,
+        ride.pickupLng,
+        5,
+        attemptedDriverIds
+    );
         if(candidates.length==0){
              
             await updateRide(ride.rideId,{
@@ -182,7 +196,21 @@ async function dispatchRide(ride){
             };
         }
          for(const candidate of candidates){
-            const reserved=await reserveDriver(candidate.driverId,ride.rideId);
+            const reserved = await reserveDriver(
+                candidate.driverId,
+                ride.rideId
+            );
+        
+            if(!reserved){
+                continue;
+            }
+        
+            attemptedDriverIds.push(candidate.driverId);
+        
+            await updateRide(ride.rideId, {
+                attemptedDriverIds:
+                    JSON.stringify(attemptedDriverIds)
+            });
 
             if(!reserved){
                 continue;

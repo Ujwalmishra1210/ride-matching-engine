@@ -20,16 +20,19 @@ const RIDE_TRANSITIONS = {
         RIDE_STATES.ASSIGNMENT_EXPIRED
     ],
 
+    [RIDE_STATES.ASSIGNMENT_EXPIRED]: [
+        RIDE_STATES.SEARCHING
+    ],
+
     [RIDE_STATES.COMPLETED]: [],
 
     [RIDE_STATES.CANCELLED]: [],
 
-    [RIDE_STATES.NO_DRIVERS_FOUND]: [],
-
-    [RIDE_STATES.ASSIGNMENT_EXPIRED]: []
+    [RIDE_STATES.NO_DRIVERS_FOUND]: []
 };
 
 function canTransitionRideState(from, to) {
+
     if (from === to) {
         return true;
     }

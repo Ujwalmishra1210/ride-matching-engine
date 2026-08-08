@@ -21,6 +21,7 @@ async function createRideRequest({
            dropLng,
            status:"SEARCHING",
            assignedDriverId:"",
+           attemptedDriverIds: JSON.stringify([]),
            createdAt:Date.now()
 
         };
