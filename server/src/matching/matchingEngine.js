@@ -23,7 +23,8 @@ const {
 const DRIVERS_GEO_KEY = "drivers:locations";
 const DRIVER_STATE_PREFIX = "driver:";   
 const {
-reserveDriver
+    reserveDriver,
+    finalizeDriverAssignment
 } = require("./reservationService");
 
 const {waitForDriverResponse}=require('./offerService');
@@ -69,31 +70,7 @@ async function findCandidateDrivers(lat,lng,radiusKm=5){
 
 }
 
-async function assignDrivertoRide(ride, driverId) {
 
-    await updateDriverState(
-        driverId,
-        DRIVER_STATES.ON_TRIP
-    );
-
-    await redis.hset(
-        `${DRIVER_STATE_PREFIX}${driverId}`,
-        {
-            currentRideId: ride.rideId
-        }
-    );
-
-    await updateRide(ride.rideId, {
-        status: "DRIVER_ASSIGNED",
-        assignedDriverId: driverId,
-        assignedAt: Date.now()
-    });
-
-    return {
-        success: true,
-        driverId
-    };
-}
 
 async function completeRide(rideId){
 
@@ -250,10 +227,48 @@ if (latestRide.status !== "SEARCHING") {
 }
 
 
-const result = await assignDrivertoRide(
-    ride,
+const result = await finalizeDriverAssignment(
+    ride.rideId,
     candidate.driverId
 );
+
+if (!result.success) {
+
+    console.log(
+        `Assignment failed for ride ${ride.rideId}: ${result.reason}`
+    );
+
+    /*
+     * The reservation may have been lost because
+     * the ride was cancelled or another operation
+     * changed the driver.
+     *
+     * Do not blindly release the driver here.
+     * The atomic assignment operation already verified
+     * ownership of the reservation.
+     */
+    if (
+        result.reason === "RIDE_NOT_AVAILABLE" ||
+        result.reason === "DRIVER_RESERVATION_LOST"
+    ) {
+        await recordFailedMatch();
+
+        await recordDispatchTime(
+            Date.now() - dispatchStartTime
+        );
+
+        return {
+            success: false,
+            reason: result.reason
+        };
+    }
+
+    await releaseDriver(
+        candidate.driverId
+    );
+
+    continue;
+}
 
 await recordSuccessfulMatch();
 
