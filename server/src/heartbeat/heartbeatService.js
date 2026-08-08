@@ -1,50 +1,64 @@
 const redis = require("../config/redis");
 
 const {
-  markDriverOffline,
-  isDriverStale
+    markDriverOffline,
+    isDriverStale
 } = require("../location/locationService");
 
 const DRIVER_STATE_PREFIX = "driver:";
 
 function startHeartbeatMonitor(intervalMs = 5000) {
 
-  setInterval(async () => {
+    setInterval(async () => {
 
-    try {
+        try {
 
-      const keys = await redis.keys(`${DRIVER_STATE_PREFIX}*`);
+            const keys =
+                await redis.keys(`${DRIVER_STATE_PREFIX}*`);
 
-      for (const key of keys) {
+            for (const key of keys) {
 
-        const driverId = key.replace(DRIVER_STATE_PREFIX, "");
+                const driverId =
+                    key.replace(DRIVER_STATE_PREFIX, "");
 
-        const stale = await isDriverStale(driverId);
+                const driver =
+                    await redis.hgetall(key);
 
-        if (!stale) {
-          continue;
+                if (Object.keys(driver).length === 0) {
+                    continue;
+                }
+
+                // Already offline, nothing to do
+                if (driver.status === "OFFLINE") {
+                    continue;
+                }
+
+                const stale =
+                    await isDriverStale(driverId);
+
+                if (!stale) {
+                    continue;
+                }
+
+                await markDriverOffline(driverId);
+
+                console.log(
+                    `Driver ${driverId} marked OFFLINE`
+                );
+            }
+
+        } catch (err) {
+
+            console.error(
+                "Heartbeat monitor error:",
+                err.message
+            );
+
         }
 
-        await markDriverOffline(driverId);
-
-        console.log(
-          `Driver ${driverId} marked OFFLINE`
-        );
-      }
-
-    } catch (err) {
-
-      console.error(
-        "Heartbeat monitor error:",
-        err.message
-      );
-
-    }
-
-  }, intervalMs);
-
+    }, intervalMs);
 }
 
 module.exports = {
-  startHeartbeatMonitor
+    startHeartbeatMonitor
 };

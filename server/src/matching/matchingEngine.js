@@ -1,7 +1,11 @@
 const redis=require('../config/redis');
 
 const {DRIVER_STATES}=require('../drivers/driverState');
-
+const {
+    acquireDispatchLock,
+    renewDispatchLock,
+    releaseDispatchLock
+} = require("./dispatchLockService");
 const {
     incrementCompletedTrips,
     incrementCancelledTrips
@@ -164,121 +168,209 @@ async function cancelRideRequest(rideId) {
         rideId
     };
 }
-async function dispatchRide(ride){
-    await recordRideRequest();
+async function dispatchRide(ride) {
 
-    const dispatchStartTime = Date.now();
+    const lock = await acquireDispatchLock(ride.rideId);
 
-    const attemptedDriverIds =
-        ride.attemptedDriverIds
-            ? JSON.parse(ride.attemptedDriverIds)
-            : [];
+    if (!lock) {
 
-    const candidates = await findCandidateDrivers(
-        ride.pickupLat,
-        ride.pickupLng,
-        5,
-        attemptedDriverIds
+        console.log(
+            `Dispatch already in progress for ride ${ride.rideId}`
+        );
+
+        return {
+            success: false,
+            reason: "DISPATCH_IN_PROGRESS"
+        };
+    }
+
+    const lockRenewalInterval = setInterval(
+        async () => {
+
+            try {
+
+                const renewed =
+                    await renewDispatchLock(lock);
+
+                if (!renewed) {
+
+                    console.warn(
+                        `Dispatch lock lost for ride ${ride.rideId}`
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.error(
+                    `Failed to renew dispatch lock for ride ${ride.rideId}:`,
+                    error.message
+                );
+
+            }
+
+        },
+        10000
     );
-        if(candidates.length==0){
-             
-            await updateRide(ride.rideId,{
-                  status:"NO_DRIVERS_FOUND"
+
+    try {
+
+        await recordRideRequest();
+
+        const dispatchStartTime = Date.now();
+
+        const attemptedDriverIds =
+            ride.attemptedDriverIds
+                ? JSON.parse(ride.attemptedDriverIds)
+                : [];
+
+        const candidates = await findCandidateDrivers(
+            ride.pickupLat,
+            ride.pickupLng,
+            5,
+            attemptedDriverIds
+        );
+
+        if (candidates.length === 0) {
+
+            await updateRide(ride.rideId, {
+                status: "NO_DRIVERS_FOUND"
             });
+
             await recordFailedMatch();
 
             await recordDispatchTime(
                 Date.now() - dispatchStartTime
             );
-            return{
-                success:false,
-                reason:"NO_DRIVERS"
+
+            return {
+                success: false,
+                reason: "NO_DRIVERS"
             };
         }
-         for(const candidate of candidates){
+
+        for (const candidate of candidates) {
+
             const reserved = await reserveDriver(
                 candidate.driverId,
                 ride.rideId
             );
-        
-            if(!reserved){
+
+            if (!reserved) {
                 continue;
             }
-        
-            attemptedDriverIds.push(candidate.driverId);
-        
+
+            attemptedDriverIds.push(
+                candidate.driverId
+            );
+
             await updateRide(ride.rideId, {
                 attemptedDriverIds:
                     JSON.stringify(attemptedDriverIds)
             });
 
-            if(!reserved){
-                continue;
-            }
-            console.log(`Offering ride ${ride.rideId} to ${candidate.driverId}`);
+            console.log(
+                `Offering ride ${ride.rideId} to ${candidate.driverId}`
+            );
+
             const sent = await sendRideOffer(
                 candidate.driverId,
                 ride
             );
-            
-            if(!sent){
-                await releaseDriver(candidate.driverId);
+
+            if (!sent) {
+
+                await releaseDriver(
+                    candidate.driverId
+                );
+
                 continue;
             }
-            
-            const accepted = await waitForDriverResponse(candidate.driverId);
-            console.log(`${candidate.driverId} response: ${accepted}`);
 
-if(!accepted){
-    await releaseDriver(candidate.driverId);
-    continue;
-}
+            const accepted =
+                await waitForDriverResponse(
+                    candidate.driverId
+                );
 
+            console.log(
+                `${candidate.driverId} response: ${accepted}`
+            );
 
-// Check latest ride state before assignment
-const latestRide = await getRide(ride.rideId);
+            if (!accepted) {
 
-if (latestRide.status !== "SEARCHING") {
+                await releaseDriver(
+                    candidate.driverId
+                );
 
-    await releaseDriver(candidate.driverId);
+                continue;
+            }
 
-    await recordFailedMatch();
+            const latestRide =
+                await getRide(ride.rideId);
 
-    await recordDispatchTime(
-        Date.now() - dispatchStartTime
-    );
+            if (latestRide.status !== "SEARCHING") {
 
-    return {
-        success: false,
-        reason: "RIDE_NOT_AVAILABLE"
-    };
-}
+                await releaseDriver(
+                    candidate.driverId
+                );
 
+                await recordFailedMatch();
 
-const result = await finalizeDriverAssignment(
-    ride.rideId,
-    candidate.driverId
-);
+                await recordDispatchTime(
+                    Date.now() - dispatchStartTime
+                );
 
-if (!result.success) {
+                return {
+                    success: false,
+                    reason: "RIDE_NOT_AVAILABLE"
+                };
+            }
 
-    console.log(
-        `Assignment failed for ride ${ride.rideId}: ${result.reason}`
-    );
+            const result =
+                await finalizeDriverAssignment(
+                    ride.rideId,
+                    candidate.driverId
+                );
 
-    /*
-     * The reservation may have been lost because
-     * the ride was cancelled or another operation
-     * changed the driver.
-     *
-     * Do not blindly release the driver here.
-     * The atomic assignment operation already verified
-     * ownership of the reservation.
-     */
-    if (
-        result.reason === "RIDE_NOT_AVAILABLE" ||
-        result.reason === "DRIVER_RESERVATION_LOST"
-    ) {
+            if (!result.success) {
+
+                console.log(
+                    `Assignment failed for ride ${ride.rideId}: ${result.reason}`
+                );
+
+                if (
+                    result.reason === "RIDE_NOT_AVAILABLE" ||
+                    result.reason === "DRIVER_RESERVATION_LOST"
+                ) {
+
+                    await recordFailedMatch();
+
+                    await recordDispatchTime(
+                        Date.now() - dispatchStartTime
+                    );
+
+                    return {
+                        success: false,
+                        reason: result.reason
+                    };
+                }
+
+                await releaseDriver(
+                    candidate.driverId
+                );
+
+                continue;
+            }
+
+            await recordSuccessfulMatch();
+
+            await recordDispatchTime(
+                Date.now() - dispatchStartTime
+            );
+
+            return result;
+        }
+
         await recordFailedMatch();
 
         await recordDispatchTime(
@@ -287,43 +379,18 @@ if (!result.success) {
 
         return {
             success: false,
-            reason: result.reason
+            reason: "NO_AVAILABLE_DRIVER"
         };
-    }
 
-    await releaseDriver(
-        candidate.driverId
-    );
+    } finally {
 
-    continue;
-}
-
-await recordSuccessfulMatch();
-
-await recordDispatchTime(
-    Date.now() - dispatchStartTime
-);
-
-return result;
-            
-
-
-
-            
-           
-         }
-        await recordFailedMatch();
-
-        await recordDispatchTime(
-            Date.now() - dispatchStartTime
+        clearInterval(
+            lockRenewalInterval
         );
-         return {
-             success:false,
-             reason:"NO_AVAILABLE_DRIVER"
-         };
 
+        await releaseDispatchLock(lock);
+    }
 }
-
 
 
 module.exports = {
