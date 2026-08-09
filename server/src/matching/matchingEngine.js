@@ -318,9 +318,10 @@ async function dispatchRide(ride) {
             }
 
             const accepted =
-                await waitForDriverResponse(
-                    candidate.driverId
-                );
+            await waitForDriverResponse(
+                candidate.driverId,
+                ride.rideId
+            );
 
             console.log(
                 `${candidate.driverId} response: ${accepted}`

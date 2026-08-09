@@ -166,19 +166,11 @@ async function rideExists(rideId) {
 
 async function getAllRideIds() {
 
-    const keys =
-        await redis.keys(
-            "ride:*"
-        );
+    const keys = await redis.keys("ride:*");
 
-    return keys.map(
-        key =>
-            key.replace(
-                "ride:",
-                ""
-            )
-    );
-
+    return keys
+        .filter(key => !key.startsWith("ride:dispatch-lock:"))
+        .map(key => key.replace("ride:", ""));
 }
 
 

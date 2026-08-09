@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const redis = require("../config/redis");
 
-const DISPATCH_LOCK_PREFIX = "ride:dispatch-lock:";
+const DISPATCH_LOCK_PREFIX = "dispatch-lock:";
 const DISPATCH_LOCK_TTL_MS = 30000;
 
 async function acquireDispatchLock(rideId) {
@@ -37,6 +37,7 @@ async function renewDispatchLock(lock) {
         if redis.call("GET", KEYS[1]) == ARGV[1] then
             return redis.call("PEXPIRE", KEYS[1], ARGV[2])
         end
+
         return 0
         `,
         1,
@@ -59,6 +60,7 @@ async function releaseDispatchLock(lock) {
         if redis.call("GET", KEYS[1]) == ARGV[1] then
             return redis.call("DEL", KEYS[1])
         end
+
         return 0
         `,
         1,
