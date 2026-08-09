@@ -57,7 +57,7 @@ async function checkRideTimeouts() {
                 const driverId = ride.assignedDriverId;
 
                 if (driverId) {
-                    await releaseDriver(driverId);
+                    await releaseDriver(driverId, rideId);
                 }
 
                 await updateRide(rideId, {

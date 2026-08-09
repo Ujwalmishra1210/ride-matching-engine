@@ -99,7 +99,7 @@ async function completeRide(rideId){
         status:"COMPLETED"
        });
        const driverId=ride.assignedDriverId;
-       await releaseDriver(driverId);
+       await releaseDriver(driverId, rideId);
        await incrementCompletedTrips(driverId);
        await recordRideCompleted();
        return{
@@ -109,26 +109,52 @@ async function completeRide(rideId){
        };
 }
 
-async function releaseDriver(driverId) {
+async function releaseDriver(driverId, rideId) {
 
-    const driver = await redis.hgetall(
-        `${DRIVER_STATE_PREFIX}${driverId}`
-    );
+    const driverKey =
+        `${DRIVER_STATE_PREFIX}${driverId}`;
 
-    if (Object.keys(driver).length === 0) {
-        return false;
-    }
+    while (true) {
 
-    await redis.hset(
-        `${DRIVER_STATE_PREFIX}${driverId}`,
-        {
+        await redis.watch(driverKey);
+
+        const driver =
+            await redis.hgetall(driverKey);
+
+        if (Object.keys(driver).length === 0) {
+            await redis.unwatch();
+            return false;
+        }
+
+        /*
+         * Only the ride that currently owns the driver
+         * is allowed to release it.
+         */
+        if (driver.currentRideId !== rideId) {
+            await redis.unwatch();
+
+            return false;
+        }
+
+        const tx = redis.multi();
+
+        tx.hset(driverKey, {
             status: DRIVER_STATES.AVAILABLE,
             currentRideId: "",
             lastUpdate: Date.now()
-        }
-    );
+        });
 
-    return true;
+        const result = await tx.exec();
+
+        if (result !== null) {
+            return true;
+        }
+
+        /*
+         * WATCH conflict.
+         * Retry with fresh state.
+         */
+    }
 }
 async function cancelRideRequest(rideId) {
 
@@ -153,7 +179,10 @@ async function cancelRideRequest(rideId) {
 
     if (ride.assignedDriverId) {
 
-        await releaseDriver(ride.assignedDriverId);
+        await releaseDriver(
+            ride.assignedDriverId,
+            rideId
+        );
     
         await incrementCancelledTrips(
             ride.assignedDriverId
@@ -281,7 +310,8 @@ async function dispatchRide(ride) {
             if (!sent) {
 
                 await releaseDriver(
-                    candidate.driverId
+                    candidate.driverId,
+                    ride.rideId
                 );
 
                 continue;
@@ -299,7 +329,8 @@ async function dispatchRide(ride) {
             if (!accepted) {
 
                 await releaseDriver(
-                    candidate.driverId
+                    candidate.driverId,
+                    ride.rideId
                 );
 
                 continue;
@@ -311,7 +342,8 @@ async function dispatchRide(ride) {
             if (latestRide.status !== "SEARCHING") {
 
                 await releaseDriver(
-                    candidate.driverId
+                    candidate.driverId,
+                    ride.rideId
                 );
 
                 await recordFailedMatch();
@@ -356,7 +388,8 @@ async function dispatchRide(ride) {
                 }
 
                 await releaseDriver(
-                    candidate.driverId
+                    candidate.driverId,
+                    ride.rideId
                 );
 
                 continue;
