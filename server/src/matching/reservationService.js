@@ -5,7 +5,8 @@ const {
 } = require("../drivers/driverState");
 
 const DRIVER_STATE_PREFIX = "driver:";
-
+const dashboardEventBus =
+    require("../websocket/dashboardEventBus");
 async function reserveDriver(driverId, rideId) {
 
     const driverKey =
@@ -137,12 +138,29 @@ async function finalizeDriverAssignment(
 
             const result = await tx.exec();
 
-            if (result !== null) {
-                return {
-                    success: true,
-                    driverId
-                };
-            }
+if (result !== null) {
+
+    dashboardEventBus.emit("RIDE_UPDATED", {
+        ...ride,
+        rideId,
+        status: "DRIVER_ASSIGNED",
+        assignedDriverId: driverId,
+        assignedAt
+    });
+
+    dashboardEventBus.emit("DRIVER_UPDATED", {
+        ...driver,
+        driverId,
+        status: DRIVER_STATES.ON_TRIP,
+        currentRideId: rideId,
+        lastUpdate: assignedAt
+    });
+
+    return {
+        success: true,
+        driverId
+    };
+}
         }
     } finally {
         conn.disconnect();

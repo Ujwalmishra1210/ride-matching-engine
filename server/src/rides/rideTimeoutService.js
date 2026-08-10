@@ -71,7 +71,8 @@ async function checkRideTimeouts() {
                 await updateRide(rideId, {
                     status: "SEARCHING",
                     assignedDriverId: "",
-                    assignedAt: ""
+                    assignedAt: "",
+                    attemptedDriverIds: JSON.stringify([])
                 });
 
                 const updatedRide = await getRide(rideId);
