@@ -1,8 +1,9 @@
 import DriverMap from "./DriverMap";
 import DriverPanel from "./DriverPanel";
+import RidePanel from "./RidePanel";
 import StatsBar from "./StatsBar";
 
-function Dashboard({ drivers, connected }) {
+function Dashboard({ drivers, rides, connected, onRequestRide, requesting }) {
     return (
         <div className="dashboard">
 
@@ -13,24 +14,31 @@ function Dashboard({ drivers, connected }) {
                     <p>Real-Time Dispatch Dashboard</p>
                 </div>
 
-                <div className="connection-status">
+                <div className="header-actions">
 
-                    <span
-                        className="status-dot"
-                        style={{
-                            background: connected
-                                ? "#22c55e"
-                                : "#ef4444",
+                    <button
+                        className="request-ride-button"
+                        onClick={onRequestRide}
+                        disabled={requesting}
+                    >
+                        {requesting ? "Requesting..." : "Request Ride"}
+                    </button>
 
-                            boxShadow: connected
-                                ? "0 0 8px #22c55e"
-                                : "0 0 8px #ef4444"
-                        }}
-                    />
+                    <div className="connection-status">
 
-                    {connected
-                        ? "LIVE"
-                        : "DISCONNECTED"}
+                        <span
+                            className="status-dot"
+                            style={{
+                                background: connected ? "#22c55e" : "#ef4444",
+                                boxShadow: connected
+                                    ? "0 0 8px #22c55e"
+                                    : "0 0 8px #ef4444"
+                            }}
+                        />
+
+                        {connected ? "LIVE" : "DISCONNECTED"}
+
+                    </div>
 
                 </div>
 
@@ -44,8 +52,16 @@ function Dashboard({ drivers, connected }) {
                     <DriverMap drivers={drivers} />
                 </div>
 
-                <div className="driver-panel-container">
-                    <DriverPanel drivers={drivers} />
+                <div className="side-column">
+
+                    <div className="driver-panel-container">
+                        <DriverPanel drivers={drivers} />
+                    </div>
+
+                    <div className="ride-panel-container">
+                        <RidePanel rides={rides} />
+                    </div>
+
                 </div>
 
             </div>

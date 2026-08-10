@@ -43,6 +43,24 @@ function createWebSocketServer(httpServer) {
         }
     }
     );
+    dashboardEventBus.on(
+        "RIDE_UPDATED",
+        (ride) => {
+            const message =
+                JSON.stringify({
+                    type: "RIDE_UPDATED",
+                    ride
+                });
+    
+            for (const client of dashboardClients) {
+                if (
+                    client.readyState === WebSocket.OPEN
+                ) {
+                    client.send(message);
+                }
+            }
+        }
+        );
     wss.on("connection", (ws) => {
 
         let driverId = null;

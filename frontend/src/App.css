@@ -370,3 +370,100 @@ body {
     color: #374151;
     background: #e5e7eb;
 }
+/* =========================
+   HEADER ACTIONS / REQUEST RIDE
+   ========================= */
+
+   .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.request-ride-button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+
+    padding: 8px 16px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.request-ride-button:hover {
+    background: #1d4ed8;
+}
+
+.request-ride-button:disabled {
+    background: #64748b;
+    cursor: not-allowed;
+}
+
+/* =========================
+   SIDE COLUMN / RIDE PANEL
+   ========================= */
+
+.side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+    min-height: 0;
+}
+
+.driver-panel-container,
+.ride-panel-container {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.driver-panel-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.ride-panel-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.ride-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ride-card {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.ride-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ride-id {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ride-driver {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.ride-empty {
+    padding: 16px;
+    font-size: 12px;
+    color: #94a3b8;
+}

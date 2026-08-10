@@ -1,6 +1,6 @@
 const redis = require('../config/redis');
 const crypto = require("crypto");
-
+const dashboardEventBus = require("../websocket/dashboardEventBus");
 const {
     canTransitionRideState
 } = require("./rideState");
@@ -33,7 +33,9 @@ async function createRideRequest({
         `ride:${rideId}`,
         ride
     );
+    dashboardEventBus.emit("RIDE_UPDATED", ride);
 
+    
     return ride;
 }
 
@@ -110,10 +112,16 @@ async function updateRide(rideId, updates) {
                 await tx.exec();
 
 
-            if (result !== null) {
+                if (result !== null) {
 
-                return true;
-            }
+                    dashboardEventBus.emit("RIDE_UPDATED", {
+                        ...ride,
+                        ...updates,
+                        rideId
+                    });
+    
+                    return true;
+                }
 
             /*
              * Another process changed
