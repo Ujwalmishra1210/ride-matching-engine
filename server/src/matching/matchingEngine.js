@@ -114,46 +114,52 @@ async function releaseDriver(driverId, rideId) {
     const driverKey =
         `${DRIVER_STATE_PREFIX}${driverId}`;
 
-    while (true) {
+    const conn = redis.getTransactionClient();
 
-        await redis.watch(driverKey);
+    try {
+        while (true) {
 
-        const driver =
-            await redis.hgetall(driverKey);
+            await conn.watch(driverKey);
 
-        if (Object.keys(driver).length === 0) {
-            await redis.unwatch();
-            return false;
+            const driver =
+                await conn.hgetall(driverKey);
+
+            if (Object.keys(driver).length === 0) {
+                await conn.unwatch();
+                return false;
+            }
+
+            /*
+             * Only the ride that currently owns the driver
+             * is allowed to release it.
+             */
+            if (driver.currentRideId !== rideId) {
+                await conn.unwatch();
+
+                return false;
+            }
+
+            const tx = conn.multi();
+
+            tx.hset(driverKey, {
+                status: DRIVER_STATES.AVAILABLE,
+                currentRideId: "",
+                lastUpdate: Date.now()
+            });
+
+            const result = await tx.exec();
+
+            if (result !== null) {
+                return true;
+            }
+
+            /*
+             * WATCH conflict.
+             * Retry with fresh state.
+             */
         }
-
-        /*
-         * Only the ride that currently owns the driver
-         * is allowed to release it.
-         */
-        if (driver.currentRideId !== rideId) {
-            await redis.unwatch();
-
-            return false;
-        }
-
-        const tx = redis.multi();
-
-        tx.hset(driverKey, {
-            status: DRIVER_STATES.AVAILABLE,
-            currentRideId: "",
-            lastUpdate: Date.now()
-        });
-
-        const result = await tx.exec();
-
-        if (result !== null) {
-            return true;
-        }
-
-        /*
-         * WATCH conflict.
-         * Retry with fresh state.
-         */
+    } finally {
+        conn.disconnect();
     }
 }
 async function cancelRideRequest(rideId) {

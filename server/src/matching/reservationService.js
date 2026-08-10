@@ -11,34 +11,40 @@ async function reserveDriver(driverId, rideId) {
     const driverKey =
         `${DRIVER_STATE_PREFIX}${driverId}`;
 
-    while (true) {
+    const conn = redis.getTransactionClient();
 
-        await redis.watch(driverKey);
+    try {
+        while (true) {
 
-        const driver =
-            await redis.hgetall(driverKey);
+            await conn.watch(driverKey);
 
-        if (
-            Object.keys(driver).length === 0 ||
-            driver.status !== DRIVER_STATES.AVAILABLE
-        ) {
-            await redis.unwatch();
-            return false;
+            const driver =
+                await conn.hgetall(driverKey);
+
+            if (
+                Object.keys(driver).length === 0 ||
+                driver.status !== DRIVER_STATES.AVAILABLE
+            ) {
+                await conn.unwatch();
+                return false;
+            }
+
+            const tx = conn.multi();
+
+            tx.hset(driverKey, {
+                status: DRIVER_STATES.RESERVED,
+                currentRideId: rideId,
+                lastUpdate: Date.now()
+            });
+
+            const result = await tx.exec();
+
+            if (result !== null) {
+                return true;
+            }
         }
-
-        const tx = redis.multi();
-
-        tx.hset(driverKey, {
-            status: DRIVER_STATES.RESERVED,
-            currentRideId: rideId,
-            lastUpdate: Date.now()
-        });
-
-        const result = await tx.exec();
-
-        if (result !== null) {
-            return true;
-        }
+    } finally {
+        conn.disconnect();
     }
 }
 
@@ -62,90 +68,84 @@ async function finalizeDriverAssignment(
     const rideKey =
         `ride:${rideId}`;
 
-    while (true) {
+    const conn = redis.getTransactionClient();
 
-        await redis.watch(
-            driverKey,
-            rideKey
-        );
+    try {
+        while (true) {
 
-        const [
-            driver,
-            ride
-        ] = await Promise.all([
-            redis.hgetall(driverKey),
-            redis.hgetall(rideKey)
-        ]);
+            await conn.watch(
+                driverKey,
+                rideKey
+            );
 
-        if (
-            Object.keys(driver).length === 0 ||
-            Object.keys(ride).length === 0
-        ) {
-            await redis.unwatch();
+            const [
+                driver,
+                ride
+            ] = await Promise.all([
+                conn.hgetall(driverKey),
+                conn.hgetall(rideKey)
+            ]);
 
-            return {
-                success: false,
-                reason: "NOT_FOUND"
-            };
+            if (
+                Object.keys(driver).length === 0 ||
+                Object.keys(ride).length === 0
+            ) {
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "NOT_FOUND"
+                };
+            }
+
+            if (
+                driver.status !== DRIVER_STATES.RESERVED ||
+                driver.currentRideId !== rideId
+            ) {
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "DRIVER_RESERVATION_LOST"
+                };
+            }
+
+            if (ride.status !== "SEARCHING") {
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "RIDE_NOT_AVAILABLE"
+                };
+            }
+
+            const assignedAt = Date.now();
+
+            const tx = conn.multi();
+
+            tx.hset(driverKey, {
+                status: DRIVER_STATES.ON_TRIP,
+                currentRideId: rideId,
+                lastUpdate: assignedAt
+            });
+
+            tx.hset(rideKey, {
+                status: "DRIVER_ASSIGNED",
+                assignedDriverId: driverId,
+                assignedAt
+            });
+
+            const result = await tx.exec();
+
+            if (result !== null) {
+                return {
+                    success: true,
+                    driverId
+                };
+            }
         }
-
-        /*
-         * The driver must still be reserved
-         * for THIS exact ride.
-         */
-        if (
-            driver.status !== DRIVER_STATES.RESERVED ||
-            driver.currentRideId !== rideId
-        ) {
-            await redis.unwatch();
-
-            return {
-                success: false,
-                reason: "DRIVER_RESERVATION_LOST"
-            };
-        }
-
-        /*
-         * The ride must still be searchable.
-         */
-        if (ride.status !== "SEARCHING") {
-            await redis.unwatch();
-
-            return {
-                success: false,
-                reason: "RIDE_NOT_AVAILABLE"
-            };
-        }
-
-        const assignedAt = Date.now();
-
-        const tx = redis.multi();
-
-        tx.hset(driverKey, {
-            status: DRIVER_STATES.ON_TRIP,
-            currentRideId: rideId,
-            lastUpdate: assignedAt
-        });
-
-        tx.hset(rideKey, {
-            status: "DRIVER_ASSIGNED",
-            assignedDriverId: driverId,
-            assignedAt
-        });
-
-        const result = await tx.exec();
-
-        if (result !== null) {
-            return {
-                success: true,
-                driverId
-            };
-        }
-
-        /*
-         * Somebody changed either key.
-         * Retry after WATCH conflict.
-         */
+    } finally {
+        conn.disconnect();
     }
 }
 

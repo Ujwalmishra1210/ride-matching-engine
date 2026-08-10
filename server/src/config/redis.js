@@ -1,16 +1,17 @@
-const Redis=require('ioredis');
+const Redis = require('ioredis');
 
-const redis=new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL);
 
-redis.on('connect',()=>{
+redis.on('connect', () => {
     console.log("Redis connected ");
-
 });
 
-redis.on('error',(err)=>{
-
-console.error('Redis Error:',err);
-
+redis.on('error', (err) => {
+    console.error('Redis Error:', err);
 });
 
-module.exports=redis;
+// NEW: gives WATCH/MULTI/EXEC blocks their own connection so they
+// can't be clobbered by another concurrent transaction on the shared client.
+redis.getTransactionClient = () => redis.duplicate();
+
+module.exports = redis;

@@ -52,74 +52,79 @@ async function updateRide(rideId, updates) {
     const rideKey =
         `ride:${rideId}`;
 
-    while (true) {
+    const conn = redis.getTransactionClient();
 
-        await redis.watch(
-            rideKey
-        );
+    try {
+        while (true) {
 
-        const ride =
-            await redis.hgetall(
+            await conn.watch(
                 rideKey
             );
 
-        if (
-            Object.keys(ride).length === 0
-        ) {
-
-            await redis.unwatch();
-
-            throw new Error(
-                "RIDE_NOT_FOUND"
-            );
-        }
-
-
-        if (updates.status) {
-
-            const valid =
-                canTransitionRideState(
-                    ride.status,
-                    updates.status
+            const ride =
+                await conn.hgetall(
+                    rideKey
                 );
 
-            if (!valid) {
+            if (
+                Object.keys(ride).length === 0
+            ) {
 
-                await redis.unwatch();
+                await conn.unwatch();
 
                 throw new Error(
-                    `INVALID_RIDE_TRANSITION: ${ride.status} -> ${updates.status}`
+                    "RIDE_NOT_FOUND"
                 );
             }
+
+
+            if (updates.status) {
+
+                const valid =
+                    canTransitionRideState(
+                        ride.status,
+                        updates.status
+                    );
+
+                if (!valid) {
+
+                    await conn.unwatch();
+
+                    throw new Error(
+                        `INVALID_RIDE_TRANSITION: ${ride.status} -> ${updates.status}`
+                    );
+                }
+            }
+
+
+            const tx =
+                conn.multi();
+
+            tx.hset(
+                rideKey,
+                updates
+            );
+
+
+            const result =
+                await tx.exec();
+
+
+            if (result !== null) {
+
+                return true;
+            }
+
+            /*
+             * Another process changed
+             * the ride after WATCH.
+             *
+             * Retry using the latest state.
+             */
         }
-
-
-        const tx =
-            redis.multi();
-
-        tx.hset(
-            rideKey,
-            updates
-        );
-
-
-        const result =
-            await tx.exec();
-
-
-        if (result !== null) {
-
-            return true;
-        }
-
-        /*
-         * Another process changed
-         * the ride after WATCH.
-         *
-         * Retry using the latest state.
-         */
+    } finally {
+        conn.disconnect();
     }
-
 }
 
 
