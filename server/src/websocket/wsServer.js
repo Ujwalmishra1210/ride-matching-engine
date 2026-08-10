@@ -3,7 +3,8 @@ const WebSocket = require("ws");
 const {
     updateDriverLocation
 } = require("../location/locationService");
-
+const dashboardEventBus =
+    require("./dashboardEventBus");
 const connectedDrivers = new Map();
 
 const {
@@ -22,7 +23,26 @@ function createWebSocketServer(httpServer) {
     const wss = new WebSocket.Server({
         server: httpServer
     });
+    const dashboardClients = new Set();
 
+    dashboardEventBus.on(
+    "DRIVER_UPDATED",
+    (driver) => {
+        const message =
+            JSON.stringify({
+                type: "DRIVER_UPDATED",
+                driver
+            });
+
+        for (const client of dashboardClients) {
+            if (
+                client.readyState === WebSocket.OPEN
+            ) {
+                client.send(message);
+            }
+        }
+    }
+    );
     wss.on("connection", (ws) => {
 
         let driverId = null;
@@ -43,21 +63,32 @@ function createWebSocketServer(httpServer) {
 
                 if (msg.type === "REGISTER") {
 
+                    if (msg.role === "DASHBOARD") {
+                
+                        dashboardClients.add(ws);
+                
+                        console.log(
+                            `Dashboard connected. Total dashboards: ${dashboardClients.size}`
+                        );
+                
+                        return;
+                    }
+                
                     driverId = msg.driverId;
-
+                
                     connectedDrivers.set(
                         driverId,
                         ws
                     );
-
+                
                     console.log(
                         `Driver registered: ${driverId}`
                     );
-
+                
                     console.log(
                         `Total drivers: ${connectedDrivers.size}`
                     );
-
+                
                     return;
                 }
 
@@ -157,21 +188,21 @@ function createWebSocketServer(httpServer) {
         ws.on("close", () => {
 
             if (!driverId) {
+                dashboardClients.delete(ws);
                 return;
             }
-
+        
             connectedDrivers.delete(driverId);
-
+        
             removePendingOffer(driverId);
-
+        
             console.log(
                 `Driver disconnected: ${driverId}`
             );
-
+        
             console.log(
                 `Remaining drivers: ${connectedDrivers.size}`
             );
-
         });
 
 

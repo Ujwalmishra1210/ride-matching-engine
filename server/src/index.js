@@ -6,6 +6,9 @@ const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
 const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
 const {
+    getDashboardState
+} = require("./websocket/dashboardService");
+const {
     dispatchRide,
     completeRide,
     cancelRideRequest
@@ -178,6 +181,28 @@ app.get('/api/rides/:rideId', async (req,res)=>{
     res.json(ride);
 
 });
+app.get(
+    "/api/dashboard/state",
+    async (req, res) => {
+        try {
+            const state =
+                await getDashboardState();
+
+            res.json(state);
+
+        } catch (error) {
+
+            console.error(
+                "Dashboard state error:",
+                error.message
+            );
+
+            res.status(500).json({
+                error: "Internal error"
+            });
+        }
+    }
+);
 const server=http.createServer(app);
 createWebSocketServer(server);
 startHeartbeatMonitor();

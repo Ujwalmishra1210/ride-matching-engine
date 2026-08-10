@@ -6,7 +6,8 @@ const {
   DRIVER_STATES,
   canTransitionDriverState
 } = require("../drivers/driverState");
-
+const dashboardEventBus =
+    require("../websocket/dashboardEventBus");
 const HEARTBEAT_TIMEOUT_MS = 10000;
 
 async function updateDriverLocation(
@@ -16,35 +17,47 @@ async function updateDriverLocation(
   heading,
   speed
 ) {
-
   await redis.geoadd(
-    DRIVERS_GEO_KEY,
-    lng,
-    lat,
-    driverId
+      DRIVERS_GEO_KEY,
+      lng,
+      lat,
+      driverId
   );
 
-  const existing = await redis.hgetall(
-    `${DRIVER_STATE_PREFIX}${driverId}`
-  );
+  const existing =
+      await redis.hgetall(
+          `${DRIVER_STATE_PREFIX}${driverId}`
+      );
 
-  await redis.hset(
-    `${DRIVER_STATE_PREFIX}${driverId}`,
-    {
+  const driverState = {
       lat,
       lng,
       heading,
       speed,
-
       status:
-        existing.status ||
-        DRIVER_STATES.AVAILABLE,
-
+          existing.status ||
+          DRIVER_STATES.AVAILABLE,
       currentRideId:
-        existing.currentRideId || "",
-
+          existing.currentRideId || "",
       lastUpdate: Date.now()
-    }
+  };
+
+  await redis.hset(
+      `${DRIVER_STATE_PREFIX}${driverId}`,
+      driverState
+  );
+
+  dashboardEventBus.emit(
+      "DRIVER_UPDATED",
+      {
+          driverId,
+          ...driverState,
+          lat: Number(lat),
+          lng: Number(lng),
+          heading: Number(heading),
+          speed: Number(speed),
+          lastUpdate: Number(driverState.lastUpdate)
+      }
   );
 }
 
@@ -127,48 +140,78 @@ async function updateDriverState(
   driverId,
   newState
 ) {
-
   const driverKey =
       `${DRIVER_STATE_PREFIX}${driverId}`;
 
-  const driver = await getDriverState(driverId);
+  const driver =
+      await getDriverState(driverId);
 
   if (!driver) {
-      throw new Error("DRIVER_NOT_FOUND");
+      throw new Error(
+          "DRIVER_NOT_FOUND"
+      );
   }
 
-  if (!canTransitionDriverState(
-      driver.status,
-      newState
-  )) {
+  if (
+      !canTransitionDriverState(
+          driver.status,
+          newState
+      )
+  ) {
       throw new Error(
           `INVALID_DRIVER_TRANSITION: ${driver.status} -> ${newState}`
       );
   }
 
+  const lastUpdate = Date.now();
+
   await redis.hset(
       driverKey,
       {
           status: newState,
-          lastUpdate: Date.now()
+          lastUpdate
+      }
+  );
+
+  dashboardEventBus.emit(
+      "DRIVER_UPDATED",
+      {
+          driverId,
+          ...driver,
+          status: newState,
+          lastUpdate
       }
   );
 }
 async function markDriverOffline(driverId) {
+  const lastUpdate = Date.now();
 
   await redis.hset(
-    `${DRIVER_STATE_PREFIX}${driverId}`,
-    {
-      status: DRIVER_STATES.OFFLINE,
-      currentRideId: "",
-      lastUpdate: Date.now()
-    }
+      `${DRIVER_STATE_PREFIX}${driverId}`,
+      {
+          status: DRIVER_STATES.OFFLINE,
+          currentRideId: "",
+          lastUpdate
+      }
   );
 
   await redis.zrem(
-    DRIVERS_GEO_KEY,
-    driverId
+      DRIVERS_GEO_KEY,
+      driverId
   );
+
+  const driver =
+      await getDriverState(driverId);
+
+  if (driver) {
+      dashboardEventBus.emit(
+          "DRIVER_UPDATED",
+          {
+              driverId,
+              ...driver
+          }
+      );
+  }
 }
 
 async function isDriverStale(driverId) {
