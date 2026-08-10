@@ -185,7 +185,41 @@ function createWebSocketServer(httpServer) {
 
                     return;
                 }
+                // =========================
+                // START TRIP
+                // =========================
 
+                if (msg.type === "START_TRIP") {
+
+                    if (
+                        !msg.driverId ||
+                        !msg.rideId
+                    ) {
+                
+                        console.warn(
+                            "Invalid START_TRIP message"
+                        );
+                
+                        return;
+                    }
+                
+                    const {
+                        startTrip
+                    } = require("../matching/matchingEngine");
+                
+                    const result =
+                        await startTrip(
+                            msg.rideId,
+                            msg.driverId
+                        );
+                
+                    console.log(
+                        `${msg.driverId} START_TRIP response:`,
+                        result
+                    );
+                
+                    return;
+                }
 
             } catch (err) {
 

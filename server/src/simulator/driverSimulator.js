@@ -381,11 +381,32 @@ async function runSimulator(numDrivers = 5) {
 
                             })
                         );
-
-
                         console.log(
                             `${driver.driverId} sent ACCEPT_RIDE for ${msg.ride.rideId}`
                         );
+                        setTimeout(() => {
+
+                            ws.send(
+                                JSON.stringify({
+                        
+                                    type: "START_TRIP",
+                        
+                                    driverId:
+                                        driver.driverId,
+                        
+                                    rideId:
+                                        msg.ride.rideId
+                        
+                                })
+                            );
+                        
+                            console.log(
+                                `${driver.driverId} sent START_TRIP for ${msg.ride.rideId}`
+                            );
+                        
+                        }, 1000);
+
+                        
 
                     }
 

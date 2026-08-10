@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express=require('express');
 const http=require('http');
+const cors = require("cors");
 const redis = require('./config/redis');
 const {createWebSocketServer}=require("./websocket/wsServer");
 const {getNearbyDrivers,getDriverState,updateDriverState}=require('./location/locationService');
@@ -22,6 +23,9 @@ const {
     startRideTimeoutMonitor
 } = require("./rides/rideTimeoutService");
 const app=express();
+app.use(cors({
+    origin: "http://localhost:5173"
+}));
 app.use(express.json());
 app.get('/',(req,res)=>{
     res.send("Ride Engine Running");
@@ -119,33 +123,37 @@ app.post('/api/rides/request',async (req,res)=>{
 
 
   } catch (error) {
-     res.status(500).json(
-        {
-            error:"Internal error"
-        }
-     );
+    console.error("RIDE REQUEST ERROR:", error);
+
+    res.status(500).json({
+        error: error.message
+    });
   }
 
 });
 
-app.post('/api/rides/:rideId/complete',async (req,res)=>{
-         try {
-             const result=await completeRide(req.params.rideId);
+app.post('/api/rides/:rideId/complete', async (req, res) => {
+    try {
+        const result = await completeRide(req.params.rideId);
 
-  if(!result.success){
-         return res.status(404).json(result);
-  }
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
 
-  res.json(result);
+        res.json(result);
 
+    } catch (err) {
 
-         } catch (err) {
-            return res.status(500).json({
-                error:"Internal error"
-            });
-         }
+        console.error(
+            `Complete ride error for ${req.params.rideId}:`,
+            err
+        );
 
-
+        return res.status(500).json({
+            error: "Internal error",
+            message: err.message
+        });
+    }
 });
 app.post("/api/rides/:rideId/cancel", async (req, res) => {
 

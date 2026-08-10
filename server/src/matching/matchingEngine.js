@@ -28,7 +28,8 @@ const DRIVERS_GEO_KEY = "drivers:locations";
 const DRIVER_STATE_PREFIX = "driver:";   
 const {
     reserveDriver,
-    finalizeDriverAssignment
+    finalizeDriverAssignment,
+    startTrip
 } = require("./reservationService");
 
 const {waitForDriverResponse}=require('./offerService');
@@ -89,7 +90,7 @@ async function completeRide(rideId){
                 reason:"RIDE_NOT_FOUND"
             };
        }
-       if (ride.status !== "DRIVER_ASSIGNED") {
+       if (ride.status !== "ON_TRIP") {
         return {
             success: false,
             reason: "INVALID_RIDE_STATE"
@@ -438,5 +439,6 @@ module.exports = {
     findCandidateDrivers,
     completeRide,
     cancelRideRequest,
-    releaseDriver
+    releaseDriver,
+    startTrip
 };

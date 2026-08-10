@@ -166,8 +166,121 @@ if (result !== null) {
         conn.disconnect();
     }
 }
+async function startTrip(rideId, driverId) {
 
+    const driverKey =
+        `${DRIVER_STATE_PREFIX}${driverId}`;
+
+    const rideKey =
+        `ride:${rideId}`;
+
+    const conn =
+        redis.getTransactionClient();
+
+    try {
+
+        while (true) {
+
+            await conn.watch(
+                driverKey,
+                rideKey
+            );
+
+            const [driver, ride] =
+                await Promise.all([
+                    conn.hgetall(driverKey),
+                    conn.hgetall(rideKey)
+                ]);
+
+            if (
+                Object.keys(driver).length === 0 ||
+                Object.keys(ride).length === 0
+            ) {
+
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "NOT_FOUND"
+                };
+            }
+
+            if (
+                driver.currentRideId !== rideId
+            ) {
+
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "DRIVER_NOT_ASSIGNED"
+                };
+            }
+
+            if (
+                ride.assignedDriverId !== driverId
+            ) {
+
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "DRIVER_NOT_ASSIGNED"
+                };
+            }
+
+            if (
+                ride.status !== "DRIVER_ASSIGNED"
+            ) {
+
+                await conn.unwatch();
+
+                return {
+                    success: false,
+                    reason: "INVALID_RIDE_STATE"
+                };
+            }
+
+            const startedAt = Date.now();
+
+            const tx = conn.multi();
+
+            tx.hset(rideKey, {
+                status: "ON_TRIP",
+                startedAt
+            });
+
+            const result =
+                await tx.exec();
+
+            if (result !== null) {
+
+                dashboardEventBus.emit(
+                    "RIDE_UPDATED",
+                    {
+                        ...ride,
+                        rideId,
+                        status: "ON_TRIP",
+                        startedAt
+                    }
+                );
+
+                return {
+                    success: true,
+                    rideId,
+                    driverId
+                };
+            }
+        }
+
+    } finally {
+
+        conn.disconnect();
+
+    }
+}
 module.exports = {
     reserveDriver,
-    finalizeDriverAssignment
+    finalizeDriverAssignment,
+    startTrip
 };

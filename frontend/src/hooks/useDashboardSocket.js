@@ -18,10 +18,14 @@ function useDashboardSocket() {
 
             socket.onopen = () => {
                 console.log("Dashboard WebSocket connected");
+
                 setConnected(true);
 
                 socket.send(
-                    JSON.stringify({ type: "REGISTER", role: "DASHBOARD" })
+                    JSON.stringify({
+                        type: "REGISTER",
+                        role: "DASHBOARD"
+                    })
                 );
             };
 
@@ -33,17 +37,25 @@ function useDashboardSocket() {
                         const updatedDriver = message.driver;
 
                         setDrivers((currentDrivers) => {
-                            const existingIndex = currentDrivers.findIndex(
-                                driver => driver.driverId === updatedDriver.driverId
-                            );
+                            const existingIndex =
+                                currentDrivers.findIndex(
+                                    (driver) =>
+                                        driver.driverId ===
+                                        updatedDriver.driverId
+                                );
 
                             if (existingIndex === -1) {
-                                return [...currentDrivers, updatedDriver];
+                                return [
+                                    ...currentDrivers,
+                                    updatedDriver
+                                ];
                             }
 
                             return currentDrivers.map(
                                 (driver, index) =>
-                                    index === existingIndex ? updatedDriver : driver
+                                    index === existingIndex
+                                        ? updatedDriver
+                                        : driver
                             );
                         });
 
@@ -54,53 +66,87 @@ function useDashboardSocket() {
                         const updatedRide = message.ride;
 
                         setRides((currentRides) => {
-                            const existingIndex = currentRides.findIndex(
-                                ride => ride.rideId === updatedRide.rideId
-                            );
+                            const existingIndex =
+                                currentRides.findIndex(
+                                    (ride) =>
+                                        ride.rideId ===
+                                        updatedRide.rideId
+                                );
 
                             if (existingIndex === -1) {
-                                // newest ride first
-                                return [updatedRide, ...currentRides].slice(0, 50);
+                                return [
+                                    updatedRide,
+                                    ...currentRides
+                                ].slice(0, 50);
                             }
 
                             return currentRides.map(
                                 (ride, index) =>
                                     index === existingIndex
-                                        ? { ...ride, ...updatedRide }
+                                        ? {
+                                              ...ride,
+                                              ...updatedRide
+                                          }
                                         : ride
                             );
                         });
 
                         return;
                     }
-
                 } catch (error) {
-                    console.error("Dashboard WebSocket message error:", error);
+                    console.error(
+                        "Dashboard WebSocket message error:",
+                        error
+                    );
                 }
             };
 
             socket.onerror = (error) => {
-                console.error("Dashboard WebSocket error:", error);
+                console.error(
+                    "Dashboard WebSocket error:",
+                    error
+                );
             };
 
             socket.onclose = () => {
-                console.log("Dashboard WebSocket disconnected");
+                console.log(
+                    "Dashboard WebSocket disconnected"
+                );
+
                 setConnected(false);
 
                 if (!cancelled) {
-                    reconnectTimer = setTimeout(connect, 2000);
+                    reconnectTimer = setTimeout(
+                        connect,
+                        2000
+                    );
                 }
             };
         }
 
         async function initializeDashboard() {
             try {
-                const response = await fetch(`${API_URL}/api/dashboard/state`);
-                if (!response.ok) throw new Error("Failed to fetch dashboard state");
+                const response = await fetch(
+                    `${API_URL}/api/dashboard/state`
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        "Failed to fetch dashboard state"
+                    );
+                }
+
                 const data = await response.json();
+
                 setDrivers(data.drivers || []);
+
+                setRides(data.rides || []);
+
             } catch (error) {
-                console.error("Dashboard state error:", error);
+                console.error(
+                    "Dashboard state error:",
+                    error
+                );
             }
 
             connect();
@@ -110,12 +156,20 @@ function useDashboardSocket() {
 
         return () => {
             cancelled = true;
+
             clearTimeout(reconnectTimer);
-            if (socket) socket.close();
+
+            if (socket) {
+                socket.close();
+            }
         };
     }, []);
 
-    return { drivers, rides, connected };
+    return {
+        drivers,
+        rides,
+        connected
+    };
 }
 
 export default useDashboardSocket;

@@ -5,15 +5,13 @@ const {
 } = require("./rideService");
 
 const {
-    releaseDriver,
-    dispatchRide
+    releaseDriver
 } = require("../matching/matchingEngine");
 
 const ASSIGNMENT_TIMEOUT_MS =
     Number(process.env.ASSIGNMENT_TIMEOUT_MS) || 120000;
 
 let timeoutCheckRunning = false;
-
 
 async function checkRideTimeouts() {
 
@@ -37,16 +35,26 @@ async function checkRideTimeouts() {
                     continue;
                 }
 
+                /*
+                 * Only monitor rides that are currently assigned.
+                 */
                 if (ride.status !== "DRIVER_ASSIGNED") {
                     continue;
                 }
 
-                const assignedAt = Number(ride.assignedAt);
+                const assignedAt =
+                    Number(ride.assignedAt);
 
                 if (!assignedAt) {
                     continue;
                 }
 
+                /*
+                 * Assignment timeout is currently only
+                 * a safety mechanism.
+                 *
+                 * We do NOT automatically redispatch here.
+                 */
                 if (
                     Date.now() - assignedAt <
                     ASSIGNMENT_TIMEOUT_MS
@@ -54,35 +62,17 @@ async function checkRideTimeouts() {
                     continue;
                 }
 
-                const driverId = ride.assignedDriverId;
-
-                if (driverId) {
-                    await releaseDriver(driverId, rideId);
-                }
-
-                await updateRide(rideId, {
-                    status: "ASSIGNMENT_EXPIRED"
-                });
-
-                console.log(
-                    `Assignment expired for ride ${rideId}`
+                console.warn(
+                    `Assignment timeout reached for ride ${rideId}`
                 );
 
-                await updateRide(rideId, {
-                    status: "SEARCHING",
-                    assignedDriverId: "",
-                    assignedAt: "",
-                    attemptedDriverIds: JSON.stringify([])
-                });
-
-                const updatedRide = await getRide(rideId);
-
-                const result = await dispatchRide(updatedRide);
-
-                console.log(
-                    `Redispatch result for ride ${rideId}:`,
-                    result
-                );
+                /*
+                 * For now, leave the ride assigned.
+                 *
+                 * Automatic redispatch will be implemented
+                 * once START_TRIP / driver arrival lifecycle
+                 * is implemented.
+                 */
 
             } catch (error) {
 
@@ -101,7 +91,6 @@ async function checkRideTimeouts() {
     }
 }
 
-
 function startRideTimeoutMonitor() {
 
     setInterval(
@@ -110,7 +99,6 @@ function startRideTimeoutMonitor() {
     );
 
 }
-
 
 module.exports = {
     startRideTimeoutMonitor

@@ -1,5 +1,8 @@
 const redis = require("../config/redis");
-
+const {
+    getAllRideIds,
+    getRide
+} = require("../rides/rideService");
 const DRIVER_STATE_PREFIX = "driver:";
 
 async function getAllDrivers() {
@@ -47,8 +50,29 @@ async function getAllDrivers() {
 async function getDashboardState() {
     const drivers = await getAllDrivers();
 
+    const rideIds = await getAllRideIds();
+
+    const rides = [];
+
+    for (const rideId of rideIds) {
+        const ride = await getRide(rideId);
+
+        if (Object.keys(ride).length === 0) {
+            continue;
+        }
+
+        rides.push(ride);
+    }
+
+    rides.sort(
+        (a, b) =>
+            Number(b.createdAt || 0) -
+            Number(a.createdAt || 0)
+    );
+
     return {
         drivers,
+        rides: rides.slice(0, 50),
         generatedAt: Date.now()
     };
 }
