@@ -31,10 +31,70 @@ function useDashboardSocket() {
             setActivities((current) => [
                 activity,
                 ...current
-            ].slice(0, 30));
+            ].slice(0, 40));
+        }
+
+        function updateDriver(updatedDriver) {
+            setDrivers((currentDrivers) => {
+                const existingIndex =
+                    currentDrivers.findIndex(
+                        (driver) =>
+                            driver.driverId ===
+                            updatedDriver.driverId
+                    );
+
+                if (existingIndex === -1) {
+                    return [
+                        ...currentDrivers,
+                        updatedDriver
+                    ];
+                }
+
+                return currentDrivers.map(
+                    (driver, index) =>
+                        index === existingIndex
+                            ? {
+                                  ...driver,
+                                  ...updatedDriver
+                              }
+                            : driver
+                );
+            });
+        }
+
+        function updateRide(updatedRide) {
+            setRides((currentRides) => {
+                const existingIndex =
+                    currentRides.findIndex(
+                        (ride) =>
+                            ride.rideId ===
+                            updatedRide.rideId
+                    );
+
+                if (existingIndex === -1) {
+                    return [
+                        updatedRide,
+                        ...currentRides
+                    ].slice(0, 50);
+                }
+
+                return currentRides.map(
+                    (ride, index) =>
+                        index === existingIndex
+                            ? {
+                                  ...ride,
+                                  ...updatedRide
+                              }
+                            : ride
+                );
+            });
         }
 
         function connect() {
+            if (cancelled) {
+                return;
+            }
+
             socket =
                 new WebSocket(WS_URL);
 
@@ -64,50 +124,17 @@ function useDashboardSocket() {
                         message.type ===
                         "DRIVER_UPDATED"
                     ) {
-                        const updatedDriver =
+                        const driver =
                             message.driver;
 
-                        setDrivers(
-                            (currentDrivers) => {
-                                const existingIndex =
-                                    currentDrivers.findIndex(
-                                        (driver) =>
-                                            driver.driverId ===
-                                            updatedDriver.driverId
-                                    );
-
-                                if (
-                                    existingIndex ===
-                                    -1
-                                ) {
-                                    return [
-                                        ...currentDrivers,
-                                        updatedDriver
-                                    ];
-                                }
-
-                                return currentDrivers.map(
-                                    (
-                                        driver,
-                                        index
-                                    ) =>
-                                        index ===
-                                        existingIndex
-                                            ? updatedDriver
-                                            : driver
-                                );
-                            }
-                        );
+                        updateDriver(driver);
 
                         addActivity({
                             id:
-                                `driver-${Date.now()}-${updatedDriver.driverId}`,
-
+                                `driver-${crypto.randomUUID()}`,
                             type: "DRIVER",
-
                             message:
-                                `Driver ${updatedDriver.driverId} is ${updatedDriver.status}`,
-
+                                `Driver ${driver.driverId} is ${driver.status}`,
                             timestamp:
                                 Date.now()
                         });
@@ -119,73 +146,33 @@ function useDashboardSocket() {
                         message.type ===
                         "RIDE_UPDATED"
                     ) {
-                        const updatedRide =
+                        const ride =
                             message.ride;
 
-                        setRides(
-                            (currentRides) => {
-                                const existingIndex =
-                                    currentRides.findIndex(
-                                        (ride) =>
-                                            ride.rideId ===
-                                            updatedRide.rideId
-                                    );
-
-                                if (
-                                    existingIndex ===
-                                    -1
-                                ) {
-                                    return [
-                                        updatedRide,
-                                        ...currentRides
-                                    ].slice(0, 50);
-                                }
-
-                                return currentRides.map(
-                                    (
-                                        ride,
-                                        index
-                                    ) =>
-                                        index ===
-                                        existingIndex
-                                            ? {
-                                                  ...ride,
-                                                  ...updatedRide
-                                              }
-                                            : ride
-                                );
-                            }
-                        );
+                        updateRide(ride);
 
                         let messageText =
-                            `Ride ${updatedRide.rideId.slice(
+                            `Ride ${ride.rideId.slice(
                                 0,
                                 8
-                            )} changed to ${
-                                updatedRide.status
-                            }`;
+                            )} changed to ${ride.status}`;
 
                         if (
-                            updatedRide.assignedDriverId
+                            ride.assignedDriverId
                         ) {
                             messageText +=
-                                ` • ${updatedRide.assignedDriverId}`;
+                                ` • Driver ${ride.assignedDriverId}`;
                         }
 
                         addActivity({
                             id:
-                                `ride-${Date.now()}-${updatedRide.rideId}`,
-
+                                `ride-${crypto.randomUUID()}`,
                             type: "RIDE",
-
                             message:
                                 messageText,
-
                             timestamp:
                                 Date.now()
                         });
-
-                        return;
                     }
                 } catch (error) {
                     console.error(

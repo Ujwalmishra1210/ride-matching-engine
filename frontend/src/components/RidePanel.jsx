@@ -3,6 +3,7 @@ import {
     Car,
     CheckCircle2,
     Clock3,
+    Search,
     XCircle
 } from "lucide-react";
 
@@ -33,19 +34,38 @@ function statusClass(status) {
 function statusIcon(status) {
     switch (status) {
         case "SEARCHING":
-            return <Clock3 size={11} />;
+            return (
+                <Search size={11} />
+            );
 
         case "DRIVER_ASSIGNED":
-            return <Car size={11} />;
+            return (
+                <Car size={11} />
+            );
 
         case "ON_TRIP":
-            return <Activity size={11} />;
+            return (
+                <Activity size={11} />
+            );
 
         case "COMPLETED":
-            return <CheckCircle2 size={11} />;
+            return (
+                <CheckCircle2
+                    size={11}
+                />
+            );
+
+        case "CANCELLED":
+        case "NO_DRIVERS_FOUND":
+        case "ASSIGNMENT_EXPIRED":
+            return (
+                <XCircle size={11} />
+            );
 
         default:
-            return <XCircle size={11} />;
+            return (
+                <Clock3 size={11} />
+            );
     }
 }
 
@@ -58,7 +78,10 @@ function RidePanel({ rides }) {
                 <div>
                     <div className="panel-title">
                         <Activity size={15} />
-                        <h2>Recent Rides</h2>
+
+                        <h2>
+                            Recent Rides
+                        </h2>
                     </div>
 
                     <span className="panel-subtitle">
@@ -76,7 +99,6 @@ function RidePanel({ rides }) {
 
                 {rides.length === 0 && (
                     <div className="panel-empty">
-
                         <Activity size={22} />
 
                         <span>
@@ -84,9 +106,10 @@ function RidePanel({ rides }) {
                         </span>
 
                         <small>
-                            Request a ride to see live dispatch.
+                            Request a demo ride
+                            to see live
+                            dispatch.
                         </small>
-
                     </div>
                 )}
 
@@ -122,7 +145,9 @@ function RidePanel({ rides }) {
                                     ride.status
                                 )}
 
-                                {ride.status}
+                                {
+                                    ride.status
+                                }
                             </span>
 
                         </div>
@@ -133,7 +158,9 @@ function RidePanel({ rides }) {
                                 <Car size={12} />
 
                                 <span>
-                                    {ride.assignedDriverId}
+                                    {
+                                        ride.assignedDriverId
+                                    }
                                 </span>
 
                             </div>

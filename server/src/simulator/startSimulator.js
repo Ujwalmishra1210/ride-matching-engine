@@ -1,3 +1,3 @@
 const { runSimulator } = require("./driverSimulator");
 
-runSimulator(20);
+runSimulator(50);

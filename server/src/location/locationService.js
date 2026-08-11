@@ -17,6 +17,22 @@ async function updateDriverLocation(
   heading,
   speed
 ) {
+  const driverKey =
+      `${DRIVER_STATE_PREFIX}${driverId}`;
+
+  const existing =
+      await redis.hgetall(driverKey);
+
+  const status =
+      existing.status ||
+      DRIVER_STATES.AVAILABLE;
+
+  const currentRideId =
+      existing.currentRideId || "";
+
+  const lastUpdate = Date.now();
+
+  // Update geographic position
   await redis.geoadd(
       DRIVERS_GEO_KEY,
       lng,
@@ -24,28 +40,32 @@ async function updateDriverLocation(
       driverId
   );
 
-  const existing =
-      await redis.hgetall(
-          `${DRIVER_STATE_PREFIX}${driverId}`
-      );
+  // IMPORTANT:
+  // Persist the complete driver state.
+  // Previously status/currentRideId were only
+  // calculated in memory and never written to Redis.
+  await redis.hset(
+      driverKey,
+      {
+          lat,
+          lng,
+          heading,
+          speed,
+          status,
+          currentRideId,
+          lastUpdate
+      }
+  );
 
   const driverState = {
       lat,
       lng,
       heading,
       speed,
-      status:
-          existing.status ||
-          DRIVER_STATES.AVAILABLE,
-      currentRideId:
-          existing.currentRideId || "",
-      lastUpdate: Date.now()
+      status,
+      currentRideId,
+      lastUpdate
   };
-
-  await redis.hset(
-      `${DRIVER_STATE_PREFIX}${driverId}`,
-      driverState
-  );
 
   dashboardEventBus.emit(
       "DRIVER_UPDATED",
@@ -56,7 +76,7 @@ async function updateDriverLocation(
           lng: Number(lng),
           heading: Number(heading),
           speed: Number(speed),
-          lastUpdate: Number(driverState.lastUpdate)
+          lastUpdate: Number(lastUpdate)
       }
   );
 }

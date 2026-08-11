@@ -7,10 +7,12 @@ import {
 } from "react-leaflet";
 
 import L from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+
 import {
     Car,
-    MapPin
+    MapPin,
+    Navigation
 } from "lucide-react";
 
 import "leaflet/dist/leaflet.css";
@@ -41,7 +43,7 @@ function createDriverIcon(status) {
             <div
                 class="driver-marker"
                 style="background:${color}"
-                title="${status}"
+                title="${status || "OFFLINE"}"
             >
                 <span>🚗</span>
             </div>
@@ -56,7 +58,14 @@ function createDriverIcon(status) {
 function MapViewport({ drivers }) {
     const map = useMap();
 
+    const hasInitialized =
+        useRef(false);
+
     useEffect(() => {
+        if (hasInitialized.current) {
+            return;
+        }
+
         const validDrivers =
             drivers.filter(
                 (driver) =>
@@ -68,24 +77,34 @@ function MapViewport({ drivers }) {
                     )
             );
 
-        if (validDrivers.length === 0) {
+        if (
+            validDrivers.length === 0
+        ) {
+            map.setView(
+                MUMBAI_CENTER,
+                12
+            );
+
             return;
         }
 
-        const bounds = L.latLngBounds(
-            validDrivers.map(
-                (driver) => [
-                    Number(driver.lat),
-                    Number(driver.lng)
-                ]
-            )
-        );
+        const bounds =
+            L.latLngBounds(
+                validDrivers.map(
+                    (driver) => [
+                        Number(driver.lat),
+                        Number(driver.lng)
+                    ]
+                )
+            );
 
         map.fitBounds(bounds, {
             padding: [45, 45],
             maxZoom: 13,
-            animate: true
+            animate: false
         });
+
+        hasInitialized.current = true;
     }, [drivers, map]);
 
     return null;
@@ -95,9 +114,9 @@ function DriverMap({ drivers }) {
     return (
         <MapContainer
             center={MUMBAI_CENTER}
-            zoom={11}
+            zoom={12}
+            scrollWheelZoom={true}
             className="driver-map"
-            zoomControl={true}
         >
 
             <TileLayer
@@ -110,13 +129,11 @@ function DriverMap({ drivers }) {
             />
 
             {drivers.map((driver) => {
-                const lat = Number(
-                    driver.lat
-                );
+                const lat =
+                    Number(driver.lat);
 
-                const lng = Number(
-                    driver.lng
-                );
+                const lng =
+                    Number(driver.lng);
 
                 if (
                     !Number.isFinite(lat) ||
@@ -127,7 +144,9 @@ function DriverMap({ drivers }) {
 
                 return (
                     <Marker
-                        key={driver.driverId}
+                        key={
+                            driver.driverId
+                        }
                         position={[
                             lat,
                             lng
@@ -136,33 +155,45 @@ function DriverMap({ drivers }) {
                             driver.status
                         )}
                     >
-
                         <Popup>
-
                             <div className="driver-popup">
 
                                 <div className="popup-title">
                                     <Car size={14} />
 
                                     <strong>
-                                        {driver.driverId}
+                                        {
+                                            driver.driverId
+                                        }
                                     </strong>
                                 </div>
 
                                 <div className="popup-status">
                                     <span
-                                        className={`popup-status-dot ${driver.status.toLowerCase()}`}
+                                        className={`popup-status-dot ${
+                                            (
+                                                driver.status ||
+                                                "OFFLINE"
+                                            ).toLowerCase()}
+                                        `}
                                     />
 
-                                    {driver.status}
+                                    {
+                                        driver.status
+                                    }
                                 </div>
 
                                 <div className="popup-row">
                                     <MapPin size={11} />
+
                                     <span>
-                                        {lat.toFixed(5)}
+                                        {lat.toFixed(
+                                            5
+                                        )}
                                         {" , "}
-                                        {lng.toFixed(5)}
+                                        {lng.toFixed(
+                                            5
+                                        )}
                                     </span>
                                 </div>
 
@@ -173,11 +204,38 @@ function DriverMap({ drivers }) {
 
                                     <strong>
                                         {Number(
-                                            driver.speed || 0
-                                        ).toFixed(1)}
+                                            driver.speed ||
+                                                0
+                                        ).toFixed(
+                                            1
+                                        )}
                                         {" km/h"}
                                     </strong>
                                 </div>
+
+                                {driver.heading !==
+                                    undefined && (
+                                    <div className="popup-row">
+                                        <span>
+                                            Heading
+                                        </span>
+
+                                        <strong>
+                                            <Navigation
+                                                size={
+                                                    10
+                                                }
+                                            />{" "}
+                                            {Number(
+                                                driver.heading ||
+                                                    0
+                                            ).toFixed(
+                                                0
+                                            )}
+                                            °
+                                        </strong>
+                                    </div>
+                                )}
 
                                 {driver.currentRideId && (
                                     <div className="popup-row">
@@ -195,9 +253,7 @@ function DriverMap({ drivers }) {
                                 )}
 
                             </div>
-
                         </Popup>
-
                     </Marker>
                 );
             })}

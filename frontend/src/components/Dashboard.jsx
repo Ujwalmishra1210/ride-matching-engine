@@ -6,7 +6,9 @@ import {
     Radio,
     Route,
     Users,
-    Zap
+    Zap,
+    Gauge,
+    Wifi
 } from "lucide-react";
 
 import DriverMap from "./DriverMap";
@@ -22,27 +24,33 @@ function Dashboard({
     onRequestRide,
     requesting
 }) {
-    const activeRides = rides.filter(
-        (ride) =>
-            ride.status === "SEARCHING" ||
-            ride.status === "DRIVER_ASSIGNED" ||
-            ride.status === "ON_TRIP"
-    ).length;
+    const activeRides =
+        rides.filter(
+            (ride) =>
+                ride.status === "SEARCHING" ||
+                ride.status ===
+                    "DRIVER_ASSIGNED" ||
+                ride.status === "ON_TRIP"
+        ).length;
 
-    const completedRides = rides.filter(
-        (ride) =>
-            ride.status === "COMPLETED"
-    ).length;
+    const completedRides =
+        rides.filter(
+            (ride) =>
+                ride.status ===
+                "COMPLETED"
+        ).length;
 
-    const onTripDrivers = drivers.filter(
-        (driver) =>
-            driver.status === "ON_TRIP"
-    ).length;
+    const onTripDrivers =
+        drivers.filter(
+            (driver) =>
+                driver.status === "ON_TRIP"
+        ).length;
 
-    const reservedDrivers = drivers.filter(
-        (driver) =>
-            driver.status === "RESERVED"
-    ).length;
+    const reservedDrivers =
+        drivers.filter(
+            (driver) =>
+                driver.status === "RESERVED"
+        ).length;
 
     const utilization =
         drivers.length === 0
@@ -66,7 +74,9 @@ function Dashboard({
                     </div>
 
                     <div>
-                        <h1>Ride Engine</h1>
+                        <h1>
+                            Ride Matching Engine
+                        </h1>
 
                         <p>
                             Real-Time Dispatch Control
@@ -77,40 +87,48 @@ function Dashboard({
 
                 <div className="header-actions">
 
-                    <div className="system-status">
-
+                    <div
+                        className={`system-status ${
+                            connected
+                                ? "is-online"
+                                : "is-offline"
+                        }`}
+                    >
                         <span
-                            className={`status-dot ${
-                                connected
-                                    ? "online"
-                                    : "offline"
-                            }`}
+                            className="status-dot"
                         />
+
+                        <Wifi size={12} />
 
                         <span>
                             {connected
                                 ? "SYSTEM LIVE"
                                 : "DISCONNECTED"}
                         </span>
-
                     </div>
 
                     <button
                         className="request-ride-button"
-                        onClick={onRequestRide}
+                        onClick={
+                            onRequestRide
+                        }
                         disabled={requesting}
                     >
                         <span className="button-icon">
                             {requesting ? (
-                                <Clock3 size={15} />
+                                <Clock3
+                                    size={15}
+                                />
                             ) : (
-                                <Zap size={15} />
+                                <Zap
+                                    size={15}
+                                />
                             )}
                         </span>
 
                         {requesting
                             ? "Requesting..."
-                            : "Request Ride"}
+                            : "Request Demo Ride"}
                     </button>
 
                 </div>
@@ -131,22 +149,37 @@ function Dashboard({
                         <div>
                             <div className="section-title-row">
                                 <Radio size={15} />
-                                <h2>Live Fleet</h2>
+
+                                <h2>
+                                    Live Fleet
+                                </h2>
+
+                                <span className="live-pill">
+                                    <span />
+                                    LIVE
+                                </span>
                             </div>
 
                             <p>
-                                Real-time driver positions
+                                Real-time driver
+                                positions
                             </p>
                         </div>
 
                         <div className="map-summary">
                             <Car size={13} />
-                            {drivers.length} drivers
+
+                            {drivers.length}
+
+                            <span>
+                                active drivers
+                            </span>
                         </div>
 
                     </div>
 
                     <div className="map-container">
+
                         <DriverMap
                             drivers={drivers}
                         />
@@ -174,6 +207,7 @@ function Dashboard({
                             </div>
 
                         </div>
+
                     </div>
 
                 </section>
@@ -205,41 +239,54 @@ function Dashboard({
                         <div>
                             <div className="section-title-row">
                                 <Activity size={15} />
-                                <h2>Live Activity</h2>
+
+                                <h2>
+                                    Live Activity
+                                </h2>
                             </div>
 
                             <p>
-                                Real-time dispatch events
+                                Real-time dispatch
+                                events
                             </p>
                         </div>
 
                         <span className="activity-live">
                             <span className="activity-live-dot" />
-                            LIVE
+                            STREAMING
                         </span>
 
                     </div>
 
                     <div className="activity-list">
 
-                        {activities.length === 0 ? (
+                        {activities.length ===
+                        0 ? (
                             <div className="activity-empty">
-
-                                <Activity size={20} />
+                                <Activity
+                                    size={20}
+                                />
 
                                 <span>
-                                    Waiting for live events...
+                                    Waiting for
+                                    live events...
                                 </span>
 
+                                <small>
+                                    Driver and ride
+                                    updates will
+                                    appear here.
+                                </small>
                             </div>
                         ) : (
                             activities.map(
                                 (activity) => (
                                     <div
                                         className="activity-item"
-                                        key={activity.id}
+                                        key={
+                                            activity.id
+                                        }
                                     >
-
                                         <div
                                             className={`activity-icon ${
                                                 activity.type ===
@@ -250,16 +297,22 @@ function Dashboard({
                                         >
                                             {activity.type ===
                                             "RIDE" ? (
-                                                <Route size={13} />
+                                                <Route
+                                                    size={13}
+                                                />
                                             ) : (
-                                                <Users size={13} />
+                                                <Users
+                                                    size={13}
+                                                />
                                             )}
                                         </div>
 
                                         <div className="activity-content">
 
                                             <div className="activity-message">
-                                                {activity.message}
+                                                {
+                                                    activity.message
+                                                }
                                             </div>
 
                                             <div className="activity-time">
@@ -268,9 +321,12 @@ function Dashboard({
                                                 ).toLocaleTimeString(
                                                     [],
                                                     {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                        second: "2-digit"
+                                                        hour:
+                                                            "2-digit",
+                                                        minute:
+                                                            "2-digit",
+                                                        second:
+                                                            "2-digit"
                                                     }
                                                 )}
                                             </div>
@@ -292,12 +348,16 @@ function Dashboard({
 
                         <div>
                             <div className="section-title-row">
-                                <Zap size={15} />
-                                <h2>Operations</h2>
+                                <Gauge size={15} />
+
+                                <h2>
+                                    Operations
+                                </h2>
                             </div>
 
                             <p>
-                                Current system overview
+                                Current system
+                                overview
                             </p>
                         </div>
 
@@ -307,7 +367,9 @@ function Dashboard({
 
                         <div className="operation-card">
                             <div className="operation-icon blue">
-                                <Activity size={15} />
+                                <Activity
+                                    size={15}
+                                />
                             </div>
 
                             <div>
@@ -323,7 +385,9 @@ function Dashboard({
 
                         <div className="operation-card">
                             <div className="operation-icon green">
-                                <CheckCircle2 size={15} />
+                                <CheckCircle2
+                                    size={15}
+                                />
                             </div>
 
                             <div>
@@ -339,7 +403,9 @@ function Dashboard({
 
                         <div className="operation-card">
                             <div className="operation-icon purple">
-                                <Radio size={15} />
+                                <Gauge
+                                    size={15}
+                                />
                             </div>
 
                             <div>

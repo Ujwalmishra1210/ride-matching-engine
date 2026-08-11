@@ -1,3 +1,8 @@
+import {
+    Car,
+    MapPin
+} from "lucide-react";
+
 function statusClass(status) {
     switch (status) {
         case "AVAILABLE":
@@ -21,54 +26,102 @@ function DriverPanel({ drivers }) {
     return (
         <div className="driver-panel">
 
-            <div className="driver-panel-header">
-                <div className="panel-header">
-                    <h2>Drivers</h2>
+            <div className="panel-header">
 
-                    <span>
-                        {drivers.length} total
+                <div>
+                    <div className="panel-title">
+                        <Car size={15} />
+
+                        <h2>
+                            Drivers
+                        </h2>
+                    </div>
+
+                    <span className="panel-subtitle">
+                        Live fleet status
                     </span>
                 </div>
+
+                <span className="panel-count">
+                    {drivers.length}
+                </span>
+
             </div>
 
             <div className="driver-list">
 
                 {drivers.length === 0 && (
-                    <div className="ride-empty">
-                        No drivers connected.
+                    <div className="panel-empty">
+                        <Car size={22} />
+
+                        <span>
+                            No drivers connected
+                        </span>
+
+                        <small>
+                            Start the simulator
+                            to populate the
+                            fleet.
+                        </small>
                     </div>
                 )}
 
-                {drivers.map((driver) => (
-                    <div
-                        className="driver-card"
-                        key={driver.driverId}
-                    >
+                {drivers.map(
+                    (driver) => (
+                        <div
+                            className="driver-card"
+                            key={
+                                driver.driverId
+                            }
+                        >
 
-                        <div className="driver-info">
+                            <div className="driver-avatar">
+                                <Car size={13} />
+                            </div>
 
-                            <strong className="driver-id">
-                                {driver.driverId}
-                            </strong>
+                            <div className="driver-info">
 
-                            <div className="driver-location">
-                                {Number(driver.lat).toFixed(4)}
-                                {" , "}
-                                {Number(driver.lng).toFixed(4)}
+                                <strong className="driver-id">
+                                    {
+                                        driver.driverId
+                                    }
+                                </strong>
+
+                                <div className="driver-location">
+                                    <MapPin
+                                        size={9}
+                                    />
+
+                                    {Number(
+                                        driver.lat
+                                    ).toFixed(
+                                        4
+                                    )}
+                                    {" , "}
+                                    {Number(
+                                        driver.lng
+                                    ).toFixed(
+                                        4
+                                    )}
+                                </div>
+
+                            </div>
+
+                            <div
+                                className={`driver-status ${statusClass(
+                                    driver.status
+                                )}`}
+                            >
+                                <span />
+                                {
+                                    driver.status ||
+                                    "OFFLINE"
+                                }
                             </div>
 
                         </div>
-
-                        <div
-                            className={`driver-status ${statusClass(
-                                driver.status
-                            )}`}
-                        >
-                            {driver.status}
-                        </div>
-
-                    </div>
-                ))}
+                    )
+                )}
 
             </div>
 

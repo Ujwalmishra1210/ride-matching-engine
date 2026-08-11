@@ -25,10 +25,16 @@ function App() {
         connected
     } = useDashboardSocket();
 
-    const [requesting, setRequesting] = useState(false);
-    const [notification, setNotification] = useState(null);
+    const [requesting, setRequesting] =
+        useState(false);
 
-    function showNotification(message, type = "success") {
+    const [notification, setNotification] =
+        useState(null);
+
+    function showNotification(
+        message,
+        type = "success"
+    ) {
         setNotification({
             message,
             type
@@ -47,28 +53,39 @@ function App() {
         setRequesting(true);
 
         try {
-            const pickup = randomNearby(MUMBAI_CENTER);
-            const drop = randomNearby(MUMBAI_CENTER);
+            const pickup =
+                randomNearby(MUMBAI_CENTER);
+
+            const drop =
+                randomNearby(MUMBAI_CENTER);
 
             const response = await fetch(
                 `${API_URL}/api/rides/request`,
                 {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type":
+                            "application/json"
                     },
                     body: JSON.stringify({
-                        riderId: `demo-rider-${Date.now()}`,
-                        pickupLat: pickup.lat,
-                        pickupLng: pickup.lng,
-                        dropLat: drop.lat,
-                        dropLng: drop.lng
+                        riderId:
+                            `demo-rider-${Date.now()}`,
+                        pickupLat:
+                            pickup.lat,
+                        pickupLng:
+                            pickup.lng,
+                        dropLat:
+                            drop.lat,
+                        dropLng:
+                            drop.lng
                     })
                 }
             );
 
             if (!response.ok) {
-                throw new Error("Ride request failed");
+                throw new Error(
+                    "Ride request failed"
+                );
             }
 
             showNotification(
@@ -96,7 +113,9 @@ function App() {
                 rides={rides}
                 activities={activities}
                 connected={connected}
-                onRequestRide={handleRequestRide}
+                onRequestRide={
+                    handleRequestRide
+                }
                 requesting={requesting}
             />
 
@@ -105,6 +124,7 @@ function App() {
                     className={`toast toast-${notification.type}`}
                 >
                     <span className="toast-dot" />
+
                     {notification.message}
                 </div>
             )}

@@ -3,38 +3,54 @@ import {
     CheckCircle2,
     CircleOff,
     Clock3,
-    Navigation
+    Navigation,
+    Activity
 } from "lucide-react";
 
-function StatsBar({ drivers, rides }) {
-    const totalDrivers = drivers.length;
+function StatsBar({
+    drivers,
+    rides
+}) {
+    const totalDrivers =
+        drivers.length;
 
-    const availableDrivers = drivers.filter(
-        (driver) =>
-            driver.status === "AVAILABLE"
-    ).length;
+    const availableDrivers =
+        drivers.filter(
+            (driver) =>
+                driver.status ===
+                "AVAILABLE"
+        ).length;
 
-    const reservedDrivers = drivers.filter(
-        (driver) =>
-            driver.status === "RESERVED"
-    ).length;
+    const reservedDrivers =
+        drivers.filter(
+            (driver) =>
+                driver.status ===
+                "RESERVED"
+        ).length;
 
-    const onTripDrivers = drivers.filter(
-        (driver) =>
-            driver.status === "ON_TRIP"
-    ).length;
+    const onTripDrivers =
+        drivers.filter(
+            (driver) =>
+                driver.status ===
+                "ON_TRIP"
+        ).length;
 
-    const offlineDrivers = drivers.filter(
-        (driver) =>
-            driver.status === "OFFLINE"
-    ).length;
+    const offlineDrivers =
+        drivers.filter(
+            (driver) =>
+                driver.status ===
+                "OFFLINE"
+        ).length;
 
-    const activeRides = rides.filter(
-        (ride) =>
-            ride.status === "SEARCHING" ||
-            ride.status === "DRIVER_ASSIGNED" ||
-            ride.status === "ON_TRIP"
-    ).length;
+    const activeRides =
+        rides.filter(
+            (ride) =>
+                ride.status ===
+                    "SEARCHING" ||
+                ride.status ===
+                    "DRIVER_ASSIGNED" ||
+                ride.status === "ON_TRIP"
+        ).length;
 
     const stats = [
         {
@@ -70,7 +86,7 @@ function StatsBar({ drivers, rides }) {
         {
             label: "Active Rides",
             value: activeRides,
-            icon: Navigation,
+            icon: Activity,
             tone: "cyan"
         }
     ];
@@ -79,7 +95,8 @@ function StatsBar({ drivers, rides }) {
         <div className="stats-bar">
 
             {stats.map((stat) => {
-                const Icon = stat.icon;
+                const Icon =
+                    stat.icon;
 
                 return (
                     <div
@@ -92,11 +109,15 @@ function StatsBar({ drivers, rides }) {
                             <div
                                 className={`stat-icon ${stat.tone}`}
                             >
-                                <Icon size={15} />
+                                <Icon
+                                    size={15}
+                                />
                             </div>
 
                             <span className="stat-label">
-                                {stat.label}
+                                {
+                                    stat.label
+                                }
                             </span>
 
                         </div>

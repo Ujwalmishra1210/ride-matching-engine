@@ -32,7 +32,10 @@ const {
     startTrip
 } = require("./reservationService");
 
-const {waitForDriverResponse}=require('./offerService');
+const {
+    waitForDriverResponse,
+    removePendingOffer
+} = require("./offerService");
 const {
     sendRideOffer
 } = require('../websocket/wsServer');
@@ -309,26 +312,31 @@ async function dispatchRide(ride) {
                 `Offering ride ${ride.rideId} to ${candidate.driverId}`
             );
 
+            const responsePromise = waitForDriverResponse(
+                candidate.driverId,
+                ride.rideId
+            );
+            
             const sent = await sendRideOffer(
                 candidate.driverId,
                 ride
             );
-
+            
             if (!sent) {
 
+                removePendingOffer(
+                    candidate.driverId
+                );
+            
                 await releaseDriver(
                     candidate.driverId,
                     ride.rideId
                 );
-
+            
                 continue;
             }
-
-            const accepted =
-            await waitForDriverResponse(
-                candidate.driverId,
-                ride.rideId
-            );
+            
+            const accepted = await responsePromise;
 
             console.log(
                 `${candidate.driverId} response: ${accepted}`
@@ -412,12 +420,16 @@ async function dispatchRide(ride) {
             return result;
         }
 
+        await updateRide(ride.rideId, {
+            status: "NO_DRIVERS_FOUND"
+        });
+        
         await recordFailedMatch();
-
+        
         await recordDispatchTime(
             Date.now() - dispatchStartTime
         );
-
+        
         return {
             success: false,
             reason: "NO_AVAILABLE_DRIVER"

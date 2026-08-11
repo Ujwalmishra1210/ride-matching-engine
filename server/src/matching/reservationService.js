@@ -125,7 +125,7 @@ async function finalizeDriverAssignment(
             const tx = conn.multi();
 
             tx.hset(driverKey, {
-                status: DRIVER_STATES.ON_TRIP,
+                status: DRIVER_STATES.RESERVED,
                 currentRideId: rideId,
                 lastUpdate: assignedAt
             });
@@ -151,7 +151,7 @@ if (result !== null) {
     dashboardEventBus.emit("DRIVER_UPDATED", {
         ...driver,
         driverId,
-        status: DRIVER_STATES.ON_TRIP,
+        status: DRIVER_STATES.RESERVED,
         currentRideId: rideId,
         lastUpdate: assignedAt
     });
@@ -228,7 +228,17 @@ async function startTrip(rideId, driverId) {
                     reason: "DRIVER_NOT_ASSIGNED"
                 };
             }
-
+            if (
+                driver.status !== DRIVER_STATES.RESERVED
+            ) {
+            
+                await conn.unwatch();
+            
+                return {
+                    success: false,
+                    reason: "INVALID_DRIVER_STATE"
+                };
+            }
             if (
                 ride.status !== "DRIVER_ASSIGNED"
             ) {
@@ -244,6 +254,12 @@ async function startTrip(rideId, driverId) {
             const startedAt = Date.now();
 
             const tx = conn.multi();
+
+            tx.hset(driverKey, {
+                status: DRIVER_STATES.ON_TRIP,
+                currentRideId: rideId,
+                lastUpdate: startedAt
+            });
 
             tx.hset(rideKey, {
                 status: "ON_TRIP",
