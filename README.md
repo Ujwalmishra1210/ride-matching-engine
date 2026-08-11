@@ -1,4 +1,4 @@
-# ride-matching-engine
+# Ride-matching-engine
 
 A real-time ride dispatch system inspired by how ride-hailing apps match riders to nearby drivers. Built to explore the hard concurrency problems in dispatch: geo-indexed driver search, atomic driver reservation under contention, ride-offer timeouts, and a live dashboard fed by WebSocket events — all backed by Redis as the single source of truth.
 
@@ -18,8 +18,7 @@ A real-time ride dispatch system inspired by how ride-hailing apps match riders 
 - [API reference](#api-reference)
 - [WebSocket protocol](#websocket-protocol)
 - [Concurrency testing](#concurrency-testing)
-- [Known limitations](#known-limitations)
-- [Roadmap](#roadmap)
+
 
 ## What it does
 
@@ -36,7 +35,7 @@ A real-time ride dispatch system inspired by how ride-hailing apps match riders 
 **Dashboard overview**
 ![Dashboard overview](docs/screenshots/dashboard-overview.png)
 
-| Ride dispatch — searching | Ride dispatch — states |
+| Ride dispatch — Searching | Ride dispatch — Other States |
 |---|---|
 | ![Ride dispatch searching](docs/screenshots/ride-dispatch-searching.png) | ![Ride dispatch states](docs/screenshots/ride-dispatch-states.png) |
 
@@ -72,7 +71,7 @@ Reserving a driver is a check-then-act operation — read the driver's status, t
 The driver reservation lock protects one driver; the dispatch lock protects one ride. It stops the same ride from being dispatched twice in parallel (e.g. a duplicate API call, or a retry racing the original request), which would otherwise send two separate offers out for the same ride.
 
 **Why an in-memory `Map` for pending offers instead of Redis?**
-An offer's lifecycle (send → await response → resolve a `Promise`) lives entirely within a single Node process and a single WebSocket connection, so keeping it in memory avoids a round trip and keeps the accept/reject path simple. The trade-off is documented under [Known limitations](#known-limitations) — this doesn't survive a server restart or scale past one instance without extra work.
+An offer's lifecycle (send → await response → resolve a `Promise`) lives entirely within a single Node process and a single WebSocket connection, so keeping it in memory avoids a round trip and keeps the accept/reject path simple.
 
 **Why an internal event bus between core services and the WebSocket layer?**
 Services like `reservationService` shouldn't need to know anything about WebSockets. Emitting `RIDE_UPDATED` / `DRIVER_UPDATED` on a plain Node `EventEmitter` keeps the matching logic testable in isolation, while `wsServer.js` subscribes once and handles all broadcast fan-out.
@@ -110,7 +109,7 @@ Both state machines are enforced through an explicit transition table (`canTrans
 | `dispatch-lock:<rideId>` | String (TTL) | Per-ride dispatch lock, token-guarded, renewed via Lua script |
 | `dispatch:metrics` | Hash | Aggregate counters — requests, successful/failed matches, dispatch and response time totals |
 
-Driver and ride hashes double as the "single source of truth" — nothing about matching state lives only in application memory except in-flight offers (see [Known limitations](#known-limitations)).
+Driver and ride hashes double as the "single source of truth" — nothing about matching state lives only in application memory except in-flight offers.
 
 ## Tech stack
 
@@ -216,7 +215,7 @@ The simulator spawns simulated drivers within a fixed lat/lng bounding box (Mumb
 | `GET` | `/debug/keys` | List all Redis keys (development only) |
 | `GET` | `/debug/flush` | Flush the entire Redis instance (development only) |
 
-`/debug/*` routes are unauthenticated and destructive — see [Known limitations](#known-limitations).
+
 
 ## WebSocket protocol
 
