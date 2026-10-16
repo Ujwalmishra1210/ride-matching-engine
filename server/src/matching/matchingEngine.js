@@ -290,6 +290,25 @@ async function dispatchRide(ride) {
 
         for (const candidate of candidates) {
 
+            // FIX: stop dispatching if the ride was cancelled (or
+            // otherwise left SEARCHING) while we were waiting.
+            const currentRide =
+                await getRide(ride.rideId);
+
+            if (currentRide.status !== "SEARCHING") {
+
+                await recordFailedMatch();
+
+                await recordDispatchTime(
+                    Date.now() - dispatchStartTime
+                );
+
+                return {
+                    success: false,
+                    reason: "RIDE_NOT_AVAILABLE"
+                };
+            }
+
             const reserved = await reserveDriver(
                 candidate.driverId,
                 ride.rideId
@@ -420,16 +439,25 @@ async function dispatchRide(ride) {
             return result;
         }
 
-        await updateRide(ride.rideId, {
-            status: "NO_DRIVERS_FOUND"
-        });
-        
+        // FIX: only mark NO_DRIVERS_FOUND if the ride is still
+        // SEARCHING; a cancelled ride must not throw an invalid
+        // transition (CANCELLED -> NO_DRIVERS_FOUND).
+        const finalRide =
+            await getRide(ride.rideId);
+
+        if (finalRide.status === "SEARCHING") {
+
+            await updateRide(ride.rideId, {
+                status: "NO_DRIVERS_FOUND"
+            });
+        }
+
         await recordFailedMatch();
-        
+
         await recordDispatchTime(
             Date.now() - dispatchStartTime
         );
-        
+
         return {
             success: false,
             reason: "NO_AVAILABLE_DRIVER"

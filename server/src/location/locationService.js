@@ -17,18 +17,9 @@ async function updateDriverLocation(
   heading,
   speed
 ) {
+
   const driverKey =
       `${DRIVER_STATE_PREFIX}${driverId}`;
-
-  const existing =
-      await redis.hgetall(driverKey);
-
-  const status =
-      existing.status ||
-      DRIVER_STATES.AVAILABLE;
-
-  const currentRideId =
-      existing.currentRideId || "";
 
   const lastUpdate = Date.now();
 
@@ -40,10 +31,9 @@ async function updateDriverLocation(
       driverId
   );
 
-  // IMPORTANT:
-  // Persist the complete driver state.
-  // Previously status/currentRideId were only
-  // calculated in memory and never written to Redis.
+  // FIX: write position fields ONLY. Never write status or
+  // currentRideId here, otherwise a stale read can overwrite a
+  // reservation/assignment that committed in between.
   await redis.hset(
       driverKey,
       {
@@ -51,31 +41,37 @@ async function updateDriverLocation(
           lng,
           heading,
           speed,
-          status,
-          currentRideId,
           lastUpdate
       }
   );
 
-  const driverState = {
-      lat,
-      lng,
-      heading,
-      speed,
-      status,
-      currentRideId,
-      lastUpdate
-  };
+  // Defaults for a brand-new driver only (no-op if the fields exist).
+  await redis.hsetnx(
+      driverKey,
+      "status",
+      DRIVER_STATES.AVAILABLE
+  );
+
+  await redis.hsetnx(
+      driverKey,
+      "currentRideId",
+      ""
+  );
+
+  // Read-only: used just to build the dashboard event.
+  const current =
+      await redis.hgetall(driverKey);
 
   dashboardEventBus.emit(
       "DRIVER_UPDATED",
       {
           driverId,
-          ...driverState,
           lat: Number(lat),
           lng: Number(lng),
           heading: Number(heading),
           speed: Number(speed),
+          status: current.status,
+          currentRideId: current.currentRideId || "",
           lastUpdate: Number(lastUpdate)
       }
   );

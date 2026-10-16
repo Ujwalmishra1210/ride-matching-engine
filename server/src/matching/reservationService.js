@@ -53,7 +53,7 @@ async function reserveDriver(driverId, rideId) {
 /*
  * Atomically converts:
  *
- * driver: RESERVED -> ON_TRIP
+ * driver: stays RESERVED (becomes ON_TRIP later, in startTrip)
  * ride:   SEARCHING -> DRIVER_ASSIGNED
  *
  * Only succeeds if both are still in the expected state.

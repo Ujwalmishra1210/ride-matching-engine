@@ -168,10 +168,10 @@ async function run() {
         passed = false;
     }
 
-    if (driver.status !== "ON_TRIP") {
+    if (driver.status !== "RESERVED") {
 
         console.error(
-            `FAIL: expected driver status ON_TRIP, got ${driver.status}`
+            `FAIL: expected driver status RESERVED, got ${driver.status}`
         );
 
         passed = false;
@@ -211,7 +211,7 @@ async function run() {
         );
 
         console.log(
-            "PASS: driver transitioned RESERVED -> ON_TRIP exactly once."
+            "PASS: driver stayed RESERVED for this ride (ON_TRIP happens later at START_TRIP)."
         );
 
         console.log(
